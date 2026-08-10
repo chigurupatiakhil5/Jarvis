@@ -5,9 +5,10 @@ agent figures out what kind of task it is and hands it off to a specialized
 **worker agent**, which does the work and reports back. Every decision and
 tool call is logged to a database, so nothing May does is a black box.
 
-Right now (v0), May can only research things on the web for you. More worker
-agents, voice input/output, a live dashboard, and wake-word activation are
-coming in later versions — see [Version History](#version-history).
+May now has five worker agents — Research, Writer, Email, Code, and Monitor —
+and the Orchestrator routes your command to whichever one fits, based on what
+you're asking for. Voice input/output, a live dashboard, and wake-word
+activation are coming in later versions — see [Version History](#version-history).
 
 ## Architecture
 
@@ -16,18 +17,29 @@ coming in later versions — see [Version History](#version-history).
    you type a   ──► │  Orchestrator   │
    command          │ (Groq/LLaMA 3)  │
                     └────────┬────────┘
-                             │ decides which agent + logs the decision
+                             │ picks one agent + logs the decision
                              ▼
-                    ┌────────────────┐        ┌─────────────────┐
-                    │ Research Agent │ ──────► │  web_search tool │
-                    │ (Groq/LLaMA 3) │ ◄────── │    (Tavily)      │
-                    └────────┬────────┘        └─────────────────┘
-                             │ summarizes results + logs
-                             ▼
+        ┌───────────┬────────────┬───────────┬────────────┬────────────┐
+        │ Research  │  Writer    │  Email    │   Code      │  Monitor    │
+        │  Agent    │  Agent     │  Agent    │   Agent     │  Agent      │
+        └─────┬─────┴─────┬──────┴─────┬─────┴──────┬──────┴─────┬──────┘
+              │           │            │            │            │
+        web_search    file_manager file_manager  file_manager +  web_search
+         (Tavily)      (saves doc)  (saves draft)  subprocess     (Tavily,
+                                                    (runs code)   news-biased)
+              │           │            │            │            │
+              ▼           ▼            ▼            ▼            ▼
                     result printed back to you
 
               All decisions/tool calls ──► PostgreSQL (agent_logs table)
 ```
+
+**Agent summary:**
+- **Research** — searches the web, summarizes findings
+- **Writer** — writes documents/reports, saves to `output/documents/`
+- **Email** — drafts subject + body, saves to `output/drafts/` (does not send/read real email)
+- **Code** — writes Python, runs it in a subprocess with a 10s timeout, returns output
+- **Monitor** — checks for recent news/developments on a topic, on demand (not continuous background watching yet)
 
 ## Tech stack
 
@@ -61,14 +73,21 @@ coming in later versions — see [Version History](#version-history).
    ```
    docker attach may-app-1
    ```
-6. Type a research question, e.g. `what are the latest developments in AI agents`,
-   and press enter. Type `exit` to quit.
+6. Type a command — try any of these to see all five agents:
+   - `what are the latest developments in AI agents` → Research
+   - `write me a short report on the benefits of Docker` → Writer
+   - `draft an email asking my manager for a day off next Friday` → Email
+   - `write and run a script that prints the first 10 fibonacci numbers` → Code
+   - `check for recent news on OpenAI` → Monitor
+
+   Type `exit` to quit.
 
 ## Version history
 
 | Version | What it added |
 |---------|----------------|
 | v0      | Text-only orchestrator + Research Agent, PostgreSQL logging, Docker Compose |
+| v1      | Writer, Email, Code, and Monitor agents; Orchestrator routes across all 5; `tools/file_manager.py` |
 
 ## Project structure
 
