@@ -1,8 +1,3 @@
-"""
-Writer Agent: given an instruction, writes documents, reports, or summaries
-and saves the result to disk.
-"""
-
 import os
 import re
 from datetime import datetime
@@ -23,7 +18,6 @@ _SYSTEM_PROMPT = (
 
 
 def _slugify(text: str) -> str:
-    """Turn an instruction into a short, filesystem-safe filename."""
     slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
     return slug[:50] or "document"
 
@@ -42,9 +36,6 @@ def _call_llm(instruction: str) -> str:
 
 
 def run(instruction: str) -> str:
-    """
-    Full Writer Agent flow: generate content, save it, log every step.
-    """
     try:
         content = _call_llm(instruction)
         log_event("writer_agent", "generate", instruction, content, status="success")

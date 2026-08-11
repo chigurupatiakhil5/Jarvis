@@ -1,8 +1,3 @@
-"""
-Email Agent: drafts an email (subject + body) from an instruction and saves it.
-Draft-only — no real inbox is connected, nothing is sent or read.
-"""
-
 import os
 import json
 import re
@@ -43,9 +38,6 @@ def _call_llm(instruction: str) -> dict:
 
 
 def run(instruction: str) -> str:
-    """
-    Full Email Agent flow: draft subject+body, save as a draft file, log every step.
-    """
     try:
         draft = _call_llm(instruction)
         log_event("email_agent", "draft", instruction, json.dumps(draft), status="success")

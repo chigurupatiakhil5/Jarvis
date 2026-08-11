@@ -1,9 +1,3 @@
-"""
-Entry point for May.
-Run this to start the assistant: `python main.py` (natively, for mic access)
-or `docker compose up app` (text-only, no mic).
-"""
-
 import os
 from dotenv import load_dotenv
 
@@ -16,7 +10,6 @@ INPUT_MODE = os.environ.get("INPUT_MODE", "voice")
 
 
 def get_command() -> str:
-    """Get the next command, either spoken (default) or typed, based on INPUT_MODE."""
     if INPUT_MODE == "voice":
         from voice.speech_to_text import listen
         text = listen()

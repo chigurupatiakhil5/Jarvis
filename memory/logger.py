@@ -1,9 +1,3 @@
-"""
-Talks to PostgreSQL. This is the only file in the project that runs SQL.
-Every agent decision and tool call gets written here with a timestamp,
-so the full history of what May did is always inspectable later.
-"""
-
 import os
 import psycopg2
 from datetime import datetime, timezone
@@ -22,7 +16,6 @@ CREATE TABLE IF NOT EXISTS agent_logs (
 
 
 def get_connection():
-    """Open a new connection to Postgres using settings from .env."""
     return psycopg2.connect(
         host=os.environ["POSTGRES_HOST"],
         port=os.environ["POSTGRES_PORT"],
@@ -33,7 +26,6 @@ def get_connection():
 
 
 def init_db():
-    """Create the agent_logs table if it doesn't exist yet. Safe to call every startup."""
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(_CREATE_TABLE_SQL)
@@ -41,15 +33,6 @@ def init_db():
 
 
 def log_event(agent_name: str, action_type: str, input_text: str, output_text: str, status: str = "success"):
-    """
-    Write one row to agent_logs.
-
-    agent_name:  who did this ("orchestrator", "research_agent", ...)
-    action_type: what kind of step this was ("plan", "tool_call", "summary", ...)
-    input_text:  what went into this step
-    output_text: what came out of this step
-    status:      "success" or "error"
-    """
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(

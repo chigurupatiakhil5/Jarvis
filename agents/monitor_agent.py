@@ -1,10 +1,3 @@
-"""
-Monitor Agent: checks for recent news/developments on a topic, on demand.
-
-Note: this is an on-demand check, not continuous background watching — May
-doesn't yet have a scheduler/background task runner. See README for details.
-"""
-
 import os
 from groq import Groq
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -39,9 +32,6 @@ def _call_llm(topic: str, results: list[dict]) -> str:
 
 
 def run(topic: str) -> str:
-    """
-    Full Monitor Agent flow: search for recent info, summarize what's notable, log every step.
-    """
     try:
         results = search_web(topic, search_type="news", recent_days=7)
         log_event("monitor_agent", "tool_call", topic, str(results), status="success")

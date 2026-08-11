@@ -1,12 +1,3 @@
-"""
-Code Agent: writes Python code from an instruction, saves it, and runs it.
-
-Execution safety: the generated file is run as a separate OS process via
-subprocess (not exec() inside this process), with a hard timeout. If it hangs
-or crashes, May itself is unaffected. This still runs inside the Docker
-container, not on the host Mac directly.
-"""
-
 import os
 import re
 import subprocess
@@ -34,7 +25,6 @@ def _slugify(text: str) -> str:
 
 
 def _strip_code_fences(text: str) -> str:
-    """LLMs sometimes wrap code in ```python fences despite instructions. Strip them if present."""
     text = text.strip()
     text = re.sub(r"^```(?:python)?\n?", "", text)
     text = re.sub(r"\n?```$", "", text)
@@ -55,9 +45,6 @@ def _call_llm(instruction: str) -> str:
 
 
 def run(instruction: str) -> str:
-    """
-    Full Code Agent flow: write code, save it, execute it with a timeout, log every step.
-    """
     try:
         code = _call_llm(instruction)
         log_event("code_agent", "generate", instruction, code, status="success")
