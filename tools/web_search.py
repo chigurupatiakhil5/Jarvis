@@ -5,6 +5,7 @@ Free tier: 1,000 searches/month. Requires a free API key (TAVILY_API_KEY in .env
 """
 
 import os
+from typing import Optional
 from tavily import TavilyClient
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -12,7 +13,7 @@ _client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=15))
-def search_web(query: str, max_results: int = 5, search_type: str = "general", recent_days: int | None = None) -> list[dict]:
+def search_web(query: str, max_results: int = 5, search_type: str = "general", recent_days: Optional[int] = None) -> list[dict]:
     """
     Search the web and return a list of {title, snippet, url} dicts.
     Retries up to 3 times with exponential backoff if the request fails.

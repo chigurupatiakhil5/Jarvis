@@ -7,15 +7,21 @@ tool call is logged to a database, so nothing May does is a black box.
 
 May now has five worker agents — Research, Writer, Email, Code, and Monitor —
 and the Orchestrator routes your command to whichever one fits, based on what
-you're asking for. Voice input/output, a live dashboard, and wake-word
-activation are coming in later versions — see [Version History](#version-history).
+you're asking for. As of v2, you can speak your commands instead of typing
+them — transcribed locally and free via Whisper. Voice output, a live
+dashboard, and wake-word activation are coming in later versions — see
+[Version History](#version-history).
 
 ## Architecture
 
 ```
                     ┌────────────────┐
-   you type a   ──► │  Orchestrator   │
-   command          │ (Groq/LLaMA 3)  │
+  you speak (or  ──►│  Whisper (local)│──► transcribed text
+  type) a command    └────────┬────────┘
+                             ▼
+                    ┌────────────────┐
+                    │  Orchestrator   │
+                    │ (Groq/LLaMA 3)  │
                     └────────┬────────┘
                              │ picks one agent + logs the decision
                              ▼
@@ -48,11 +54,17 @@ activation are coming in later versions — see [Version History](#version-histo
 | Orchestrator brain | Groq API + LLaMA 3             | Free tier |
 | Worker agents      | Groq API + LLaMA 3             | Free tier |
 | Web search tool    | Tavily                         | Free tier (1,000 searches/mo) |
+| Speech-to-text     | Whisper (faster-whisper, local) | Free, runs on your machine |
 | Logging / memory   | PostgreSQL                     | Free (self-hosted) |
 | Containerization   | Docker Compose                 | Free |
 | Language           | Python 3.12                    | Free |
 
 ## Setup
+
+**Note on running mode:** as of v2, May runs **natively** on your Mac (not
+fully inside Docker) so she can access your microphone — Docker Desktop on
+macOS can't reliably forward audio devices into a container. PostgreSQL still
+runs in Docker.
 
 1. Copy the environment template and fill in your keys:
    ```
@@ -64,23 +76,35 @@ activation are coming in later versions — see [Version History](#version-histo
 3. Get a free Tavily API key: go to [tavily.com](https://tavily.com), sign up,
    copy your API key from the dashboard, and paste it into `.env` as
    `TAVILY_API_KEY`.
-4. Start everything with Docker Compose:
+4. Start just the database:
    ```
-   docker compose up --build
+   docker compose up -d db
    ```
-5. Once you see `May is ready.`, attach to the running container to type
-   commands:
+5. Set up a local Python environment and install dependencies:
    ```
-   docker attach may-app-1
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
    ```
-6. Type a command — try any of these to see all five agents:
+6. Run May:
+   ```
+   python main.py
+   ```
+   The first run downloads the Whisper "base" model (~150MB) once — it's
+   cached after that.
+7. Press Enter, speak a command, press Enter again when done. Try any of these:
    - `what are the latest developments in AI agents` → Research
    - `write me a short report on the benefits of Docker` → Writer
    - `draft an email asking my manager for a day off next Friday` → Email
    - `write and run a script that prints the first 10 fibonacci numbers` → Code
    - `check for recent news on OpenAI` → Monitor
 
-   Type `exit` to quit.
+   Say (or type, if `INPUT_MODE=text`) `exit` to quit.
+
+**Prefer typing, or running fully in Docker without a mic?** Set
+`INPUT_MODE=text` in `.env`. You can still use `docker compose up app` in that
+case — just remember to set `POSTGRES_HOST=db` and `POSTGRES_PORT=5432` in
+`.env` first (see the comments in `.env.example`).
 
 ## Version history
 
@@ -88,6 +112,7 @@ activation are coming in later versions — see [Version History](#version-histo
 |---------|----------------|
 | v0      | Text-only orchestrator + Research Agent, PostgreSQL logging, Docker Compose |
 | v1      | Writer, Email, Code, and Monitor agents; Orchestrator routes across all 5; `tools/file_manager.py` |
+| v2      | Voice input via local Whisper; runs natively for mic access, Postgres stays in Docker |
 
 ## Project structure
 
@@ -96,7 +121,7 @@ may/
 ├── agents/          # orchestrator + worker agent logic
 ├── tools/           # functions agents use to act (web search, ...)
 ├── memory/          # PostgreSQL logging
-├── voice/           # speech-to-text / text-to-speech (added in v2/v3)
+├── voice/           # speech-to-text (v2) / text-to-speech (v3)
 ├── frontend/        # React dashboard (added in v4)
 ├── main.py          # entry point
 ├── docker-compose.yml

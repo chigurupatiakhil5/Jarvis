@@ -1,8 +1,10 @@
 """
 Entry point for May.
-Run this to start the assistant: `python main.py` (or via docker compose).
+Run this to start the assistant: `python main.py` (natively, for mic access)
+or `docker compose up app` (text-only, no mic).
 """
 
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,13 +12,26 @@ load_dotenv()
 from memory.logger import init_db
 from agents.orchestrator import handle_command
 
+INPUT_MODE = os.environ.get("INPUT_MODE", "voice")
+
+
+def get_command() -> str:
+    """Get the next command, either spoken (default) or typed, based on INPUT_MODE."""
+    if INPUT_MODE == "voice":
+        from voice.speech_to_text import listen
+        text = listen()
+        print(f"you (heard)> {text}")
+        return text.strip()
+    return input("you> ").strip()
+
 
 def main():
     init_db()
-    print("May is ready. Type a command, or 'exit' to quit.\n")
+    mode_label = "Speak a command" if INPUT_MODE == "voice" else "Type a command"
+    print(f"May is ready. {mode_label}, or say/type 'exit' to quit.\n")
 
     while True:
-        command = input("you> ").strip()
+        command = get_command()
         if not command:
             continue
         if command.lower() in ("exit", "quit"):
