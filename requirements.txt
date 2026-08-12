@@ -7,3 +7,5 @@ tenacity==9.0.0
 sounddevice==0.5.5
 soundfile==0.13.1
 faster-whisper==1.2.1
+fastapi==0.128.8
+uvicorn[standard]==0.39.0

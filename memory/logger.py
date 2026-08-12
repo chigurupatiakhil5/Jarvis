@@ -1,6 +1,9 @@
 import os
 import psycopg2
+import httpx
 from datetime import datetime, timezone
+
+_EVENTS_URL = "http://localhost:8001/events"
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS agent_logs (
@@ -33,6 +36,8 @@ def init_db():
 
 
 def log_event(agent_name: str, action_type: str, input_text: str, output_text: str, status: str = "success"):
+    timestamp = datetime.now(timezone.utc)
+
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -40,6 +45,22 @@ def log_event(agent_name: str, action_type: str, input_text: str, output_text: s
                 INSERT INTO agent_logs (timestamp, agent_name, action_type, input, output, status)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
-                (datetime.now(timezone.utc), agent_name, action_type, input_text, output_text, status),
+                (timestamp, agent_name, action_type, input_text, output_text, status),
             )
         conn.commit()
+
+    try:
+        httpx.post(
+            _EVENTS_URL,
+            json={
+                "agent_name": agent_name,
+                "action_type": action_type,
+                "input": input_text,
+                "output": output_text,
+                "status": status,
+                "timestamp": timestamp.isoformat(),
+            },
+            timeout=1.0,
+        )
+    except Exception:
+        pass

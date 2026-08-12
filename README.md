@@ -8,9 +8,10 @@ tool call is logged to a database, so nothing May does is a black box.
 May now has five worker agents — Research, Writer, Email, Code, and Monitor —
 and the Orchestrator routes your command to whichever one fits, based on what
 you're asking for. You can speak your commands instead of typing them
-(local, free Whisper transcription), and as of v3, May speaks her answers
-back to you too (local, free text-to-speech). A live dashboard and wake-word
-activation are coming in later versions — see [Version History](#version-history).
+(local, free Whisper transcription), and May speaks her answers back to you
+too (local, free text-to-speech). As of v4, a live web dashboard shows every
+agent decision as it happens. Wake-word activation is coming in v5 — see
+[Version History](#version-history).
 
 ## Architecture
 
@@ -36,9 +37,15 @@ activation are coming in later versions — see [Version History](#version-histo
               │           │            │            │            │
               ▼           ▼            ▼            ▼            ▼
                     result printed AND spoken back to you
-                       (pyttsx3, local text-to-speech)
+                       (macOS `say`, local text-to-speech)
 
               All decisions/tool calls ──► PostgreSQL (agent_logs table)
+                                     │
+                                     ▼
+                      api.py (FastAPI) ──► broadcasts over WebSocket
+                                     │
+                                     ▼
+                  frontend/ (React) ── live dashboard in your browser
 ```
 
 **Agent summary:**
@@ -58,6 +65,8 @@ activation are coming in later versions — see [Version History](#version-histo
 | Speech-to-text     | Whisper (faster-whisper, local) |
 | Text-to-speech     | macOS `say` command (built-in, local) |
 | Logging / memory   | PostgreSQL                     |
+| Dashboard backend  | FastAPI + WebSocket            |
+| Dashboard frontend | React + TypeScript (Vite)      |
 | Containerization   | Docker Compose                 |
 | Language           | Python 3.12                    |
 
@@ -88,14 +97,29 @@ runs in Docker.
    source .venv/bin/activate
    pip install -r requirements.txt
    ```
-6. Run May:
+6. (Optional, for the live dashboard) In a separate terminal, start the API server.
+   Port 8000 is a common default other projects also use, so May's dashboard
+   backend runs on 8001 instead:
+   ```
+   source .venv/bin/activate
+   uvicorn api:app --reload --port 8001
+   ```
+7. (Optional) In another terminal, start the dashboard:
+   ```
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   Open the URL it prints (usually `http://localhost:5173`) in your browser.
+8. Run May:
    ```
    python main.py
    ```
    The first run downloads the Whisper "tiny" model (~75MB) once — it's
    cached after that.
-7. Press Enter, speak a command, press Enter again when done — May will
-   print AND speak her answer back to you. Try any of these:
+9. Press Enter, speak a command, press Enter again when done — May will
+   print AND speak her answer back to you, and (if the dashboard is running)
+   it'll appear there live too. Try any of these:
    - `what are the latest developments in AI agents` → Research
    - `write me a short report on the benefits of Docker` → Writer
    - `draft an email asking my manager for a day off next Friday` → Email
@@ -118,7 +142,8 @@ Docker-based text mode via `docker compose up app`, also set
 | v0      | Text-only orchestrator + Research Agent, PostgreSQL logging, Docker Compose |
 | v1      | Writer, Email, Code, and Monitor agents; Orchestrator routes across all 5; `tools/file_manager.py` |
 | v2      | Voice input via local Whisper; runs natively for mic access, Postgres stays in Docker |
-| v3      | Voice output via pyttsx3; May speaks her responses back to you |
+| v3      | Voice output via macOS `say`; May speaks her responses back to you |
+| v4      | Live web dashboard (React + FastAPI + WebSocket) showing agent activity in real time |
 
 ## Project structure
 
@@ -128,8 +153,9 @@ may/
 ├── tools/           # functions agents use to act (web search, ...)
 ├── memory/          # PostgreSQL logging
 ├── voice/           # speech-to-text (v2) / text-to-speech (v3)
-├── frontend/        # React dashboard (added in v4)
-├── main.py          # entry point
+├── frontend/        # React dashboard (v4)
+├── main.py          # entry point (voice/text loop)
+├── api.py           # FastAPI dashboard backend (v4)
 ├── docker-compose.yml
 ├── requirements.txt
 └── .env.example
