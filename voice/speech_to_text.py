@@ -3,7 +3,7 @@ import sounddevice as sd
 from faster_whisper import WhisperModel
 
 _SAMPLE_RATE = 16000
-_MODEL_SIZE = "base"
+_MODEL_SIZE = "tiny"
 
 _model = WhisperModel(_MODEL_SIZE, device="cpu", compute_type="int8")
 
@@ -25,6 +25,7 @@ def listen() -> str:
     print("Listening... press Enter when you're done.")
     audio = _record_until_enter()
 
+    print("Transcribing... (first run per session can take a bit longer)")
     segments, _ = _model.transcribe(audio, language="en")
     text = " ".join(segment.text.strip() for segment in segments)
     return text.strip()

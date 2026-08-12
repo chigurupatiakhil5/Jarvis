@@ -7,6 +7,7 @@ from memory.logger import init_db
 from agents.orchestrator import handle_command
 
 INPUT_MODE = os.environ.get("INPUT_MODE", "voice")
+OUTPUT_MODE = os.environ.get("OUTPUT_MODE", "voice")
 
 
 def get_command() -> str:
@@ -16,6 +17,13 @@ def get_command() -> str:
         print(f"you (heard)> {text}")
         return text.strip()
     return input("you> ").strip()
+
+
+def respond(text: str) -> None:
+    print(f"\nmay> {text}\n")
+    if OUTPUT_MODE == "voice":
+        from voice.text_to_speech import speak
+        speak(text)
 
 
 def main():
@@ -33,9 +41,9 @@ def main():
 
         try:
             result = handle_command(command)
-            print(f"\nmay> {result}\n")
+            respond(result)
         except Exception as e:
-            print(f"\nmay> Something went wrong: {e}\n")
+            respond(f"Something went wrong: {e}")
 
 
 if __name__ == "__main__":

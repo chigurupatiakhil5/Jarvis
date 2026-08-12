@@ -7,10 +7,10 @@ tool call is logged to a database, so nothing May does is a black box.
 
 May now has five worker agents — Research, Writer, Email, Code, and Monitor —
 and the Orchestrator routes your command to whichever one fits, based on what
-you're asking for. As of v2, you can speak your commands instead of typing
-them — transcribed locally and free via Whisper. Voice output, a live
-dashboard, and wake-word activation are coming in later versions — see
-[Version History](#version-history).
+you're asking for. You can speak your commands instead of typing them
+(local, free Whisper transcription), and as of v3, May speaks her answers
+back to you too (local, free text-to-speech). A live dashboard and wake-word
+activation are coming in later versions — see [Version History](#version-history).
 
 ## Architecture
 
@@ -35,7 +35,8 @@ dashboard, and wake-word activation are coming in later versions — see
                                                     (runs code)   news-biased)
               │           │            │            │            │
               ▼           ▼            ▼            ▼            ▼
-                    result printed back to you
+                    result printed AND spoken back to you
+                       (pyttsx3, local text-to-speech)
 
               All decisions/tool calls ──► PostgreSQL (agent_logs table)
 ```
@@ -49,15 +50,16 @@ dashboard, and wake-word activation are coming in later versions — see
 
 ## Tech stack
 
-| Layer            | Technology                     | Cost |
-|-------------------|--------------------------------|------|
-| Orchestrator brain | Groq API + LLaMA 3             | Free tier |
-| Worker agents      | Groq API + LLaMA 3             | Free tier |
-| Web search tool    | Tavily                         | Free tier (1,000 searches/mo) |
-| Speech-to-text     | Whisper (faster-whisper, local) | Free, runs on your machine |
-| Logging / memory   | PostgreSQL                     | Free (self-hosted) |
-| Containerization   | Docker Compose                 | Free |
-| Language           | Python 3.12                    | Free |
+| Layer            | Technology                     |
+|-------------------|--------------------------------|
+| Orchestrator brain | Groq API + LLaMA 3             |
+| Worker agents      | Groq API + LLaMA 3             |
+| Web search tool    | Tavily                         |
+| Speech-to-text     | Whisper (faster-whisper, local) |
+| Text-to-speech     | macOS `say` command (built-in, local) |
+| Logging / memory   | PostgreSQL                     |
+| Containerization   | Docker Compose                 |
+| Language           | Python 3.12                    |
 
 ## Setup
 
@@ -90,9 +92,10 @@ runs in Docker.
    ```
    python main.py
    ```
-   The first run downloads the Whisper "base" model (~150MB) once — it's
+   The first run downloads the Whisper "tiny" model (~75MB) once — it's
    cached after that.
-7. Press Enter, speak a command, press Enter again when done. Try any of these:
+7. Press Enter, speak a command, press Enter again when done — May will
+   print AND speak her answer back to you. Try any of these:
    - `what are the latest developments in AI agents` → Research
    - `write me a short report on the benefits of Docker` → Writer
    - `draft an email asking my manager for a day off next Friday` → Email
@@ -101,10 +104,12 @@ runs in Docker.
 
    Say (or type, if `INPUT_MODE=text`) `exit` to quit.
 
-**Prefer typing, or running fully in Docker without a mic?** Set
-`INPUT_MODE=text` in `.env`. You can still use `docker compose up app` in that
-case — just remember to set `POSTGRES_HOST=db` and `POSTGRES_PORT=5432` in
-`.env` first (see the comments in `.env.example`).
+**Prefer typing/reading only, or running fully in Docker without a mic?** Set
+`INPUT_MODE=text` and/or `OUTPUT_MODE=text` in `.env` independently — e.g.
+type your commands but still hear May's replies, or vice versa. For fully
+Docker-based text mode via `docker compose up app`, also set
+`POSTGRES_HOST=db` and `POSTGRES_PORT=5432` first (see the comments in
+`.env.example`).
 
 ## Version history
 
@@ -113,6 +118,7 @@ case — just remember to set `POSTGRES_HOST=db` and `POSTGRES_PORT=5432` in
 | v0      | Text-only orchestrator + Research Agent, PostgreSQL logging, Docker Compose |
 | v1      | Writer, Email, Code, and Monitor agents; Orchestrator routes across all 5; `tools/file_manager.py` |
 | v2      | Voice input via local Whisper; runs natively for mic access, Postgres stays in Docker |
+| v3      | Voice output via pyttsx3; May speaks her responses back to you |
 
 ## Project structure
 
