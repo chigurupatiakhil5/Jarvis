@@ -15,10 +15,10 @@ def get_command() -> str:
         from voice.wake_word import wait_for_wake_word
         from voice.speech_to_text import listen_after_wake_word
         wait_for_wake_word()
-        print("Yes?")
+        print("Yes, boss?")
         if OUTPUT_MODE == "voice":
             from voice.text_to_speech import speak
-            speak("Yes?")
+            speak("Yes, boss?")
         text = listen_after_wake_word()
         print(f"you (heard)> {text}")
         return text.strip()

@@ -6,13 +6,19 @@ to a specialized **worker agent**, which does the work and reports back.
 Every decision and tool call is logged to a database, so nothing Jarvis does
 is a black box.
 
-Jarvis has five worker agents — Research, Writer, Email, Code, and Monitor —
-and the Orchestrator routes your command to whichever one fits, based on what
-you're asking for. You can speak your commands instead of typing them
-(local, free Whisper transcription), and Jarvis speaks his answers back to
-you too (local, free text-to-speech). A live web dashboard shows every agent
+Jarvis has six worker agents — Research, Writer, Email, Code, Monitor, and
+Preferences — and the Orchestrator routes your command to whichever one
+fits, based on what you're asking for. It also reads your saved preferences
+before deciding, so it can personalize how it delegates — e.g. "I'm
+traveling to Chicago" naturally becomes "find good Indian restaurants in
+Chicago" if you've told it you like Indian food. You can speak your commands
+instead of typing them (local, free Whisper transcription), and Jarvis
+speaks his answers back to you too (local, free text-to-speech, or an
+optional ElevenLabs upgrade). A live web dashboard shows every agent
 decision as it happens. Jarvis can also listen continuously in the
 background and activate when you say "Hey Jarvis" — no button, no keyboard.
+A separate background process can proactively check real weather/sunset
+conditions against your preferences and speak up on his own.
 
 ## Architecture
 
@@ -33,26 +39,32 @@ background and activate when you say "Hey Jarvis" — no button, no keyboard.
                     └────────┬────────┘
                              │ picks one agent + logs the decision
                              ▼
-        ┌───────────┬────────────┬───────────┬────────────┬────────────┐
-        │ Research  │  Writer    │  Email    │   Code      │  Monitor    │
-        │  Agent    │  Agent     │  Agent    │   Agent     │  Agent      │
-        └─────┬─────┴─────┬──────┴─────┬─────┴──────┬──────┴─────┬──────┘
-              │           │            │            │            │
-        web_search    file_manager file_manager  file_manager +  web_search
-         (Tavily)      (saves doc)  (saves draft)  subprocess     (Tavily,
-                                                    (runs code)   news-biased)
-              │           │            │            │            │
-              ▼           ▼            ▼            ▼            ▼
-                    result printed AND spoken back to you
-                       (macOS `say`, local text-to-speech)
+    ┌───────────┬────────────┬───────────┬────────────┬────────────┬────────────┐
+    │ Research  │  Writer    │  Email    │   Code      │  Monitor    │ Preferences │
+    │  Agent    │  Agent     │  Agent    │   Agent     │  Agent      │  Agent      │
+    └─────┬─────┴─────┬──────┴─────┬─────┴──────┬──────┴─────┬──────┴─────┬──────┘
+          │           │            │            │            │            │
+    web_search    file_manager file_manager  file_manager +  web_search   saves to
+     (Tavily)      (saves doc)  (saves draft)  subprocess     (Tavily,   preferences
+                                                (runs code)   news-biased)  table
+          │           │            │            │            │            │
+          ▼           ▼            ▼            ▼            ▼            ▼
+                result printed AND spoken back to you
+                   (macOS `say` or optional ElevenLabs)
 
-              All decisions/tool calls ──► PostgreSQL (agent_logs table)
-                                     │
-                                     ▼
-                      api.py (FastAPI) ──► broadcasts over WebSocket
-                                     │
-                                     ▼
-                  frontend/ (React) ── live dashboard in your browser
+          All decisions/tool calls ──► PostgreSQL (agent_logs, preferences tables)
+                                 │
+                                 ▼
+                  api.py (FastAPI) ──► broadcasts over WebSocket
+                                 │
+                                 ▼
+              frontend/ (React) ── live dashboard in your browser
+
+     ┌─────────────────────────────────────────────────────────────┐
+     │ scheduler.py (separate process) — every N minutes:            │
+     │ weather (Open-Meteo) + preferences → LLM decides → speaks up  │
+     │ unprompted if something matches, avoiding repeats              │
+     └─────────────────────────────────────────────────────────────┘
 ```
 
 **Agent summary:**
@@ -60,7 +72,8 @@ background and activate when you say "Hey Jarvis" — no button, no keyboard.
 - **Writer** — writes documents/reports, saves to `output/documents/`
 - **Email** — drafts subject + body, saves to `output/drafts/` (does not send/read real email)
 - **Code** — writes Python, runs it in a subprocess with a 10s timeout, returns output
-- **Monitor** — checks for recent news/developments on a topic, on demand (not continuous background watching yet)
+- **Monitor** — checks for recent news/developments on a topic, on demand
+- **Preferences** — remembers things you tell it you like/care about, for the Orchestrator and `scheduler.py` to use later
 
 ## Tech stack
 
@@ -69,6 +82,7 @@ background and activate when you say "Hey Jarvis" — no button, no keyboard.
 | Orchestrator brain | Groq API + LLaMA 3             |
 | Worker agents      | Groq API + LLaMA 3             |
 | Web search tool    | Tavily                         |
+| Weather tool       | Open-Meteo (free, no API key)  |
 | Speech-to-text     | Whisper (faster-whisper, local) |
 | Text-to-speech     | macOS `say` (default, free, local) or ElevenLabs (optional, higher quality) |
 | Wake-word detection | openWakeWord (local, pretrained "Hey Jarvis" model) |
@@ -142,8 +156,18 @@ in Docker.
    - `draft an email asking my manager for a day off next Friday` → Email
    - `write and run a script that prints the first 10 fibonacci numbers` → Code
    - `check for recent news on OpenAI` → Monitor
+   - `remember that I like rainy, windy weather with no sun` → Preferences
 
    Say (or type, if `INPUT_MODE=text`) `exit` to quit.
+10. (Optional, for proactive notifications) In another terminal, start the
+    background monitor. Set `LOCATION_LAT`/`LOCATION_LON`/`LOCATION_TIMEZONE`
+    in `.env` to your location first (defaults to Austin, TX):
+    ```
+    source .venv/bin/activate
+    python scheduler.py
+    ```
+    Save at least one preference first (step 9) — with none saved, the
+    scheduler has nothing to check against and skips every cycle.
 
 **Prefer typing/reading only, or running fully in Docker without a mic?** Set
 `INPUT_MODE=text` and/or `OUTPUT_MODE=text` in `.env` independently — e.g.
@@ -163,6 +187,7 @@ Docker-based text mode via `docker compose up app`, also set
 | v4      | Live web dashboard (React + FastAPI + WebSocket) showing agent activity in real time |
 | v5      | Wake-word activation via openWakeWord's pretrained "Hey Jarvis" model — say it instead of pressing Enter |
 | v6      | Optional ElevenLabs voice upgrade, with automatic fallback to the free `say` voice |
+| v7      | Preferences Agent + `scheduler.py` — Jarvis remembers what you like and proactively checks weather/sunset conditions against it, unprompted |
 
 ## Project structure
 
@@ -175,6 +200,7 @@ jarvis/
 ├── frontend/        # React dashboard (v4)
 ├── main.py          # entry point (voice/text loop)
 ├── api.py           # FastAPI dashboard backend (v4)
+├── scheduler.py     # background proactive-notification process (v7)
 ├── docker-compose.yml
 ├── requirements.txt
 └── .env.example

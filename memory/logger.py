@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS agent_logs (
     output TEXT,
     status TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS preferences (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL,
+    description TEXT NOT NULL
+);
 """
 
 
@@ -64,3 +70,35 @@ def log_event(agent_name: str, action_type: str, input_text: str, output_text: s
         )
     except Exception:
         pass
+
+
+def save_preference(description: str) -> None:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO preferences (timestamp, description) VALUES (%s, %s)",
+                (datetime.now(timezone.utc), description),
+            )
+        conn.commit()
+
+
+def get_preferences() -> list[str]:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT description FROM preferences ORDER BY id")
+            return [row[0] for row in cur.fetchall()]
+
+
+def get_recent_notifications(hours: int = 6) -> list[str]:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT output FROM agent_logs
+                WHERE agent_name = 'scheduler' AND action_type = 'notify'
+                AND timestamp > NOW() - INTERVAL '%s hours'
+                ORDER BY id
+                """,
+                (hours,),
+            )
+            return [row[0] for row in cur.fetchall()]
