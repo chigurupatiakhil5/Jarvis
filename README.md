@@ -70,7 +70,7 @@ background and activate when you say "Hey Jarvis" — no button, no keyboard.
 | Worker agents      | Groq API + LLaMA 3             |
 | Web search tool    | Tavily                         |
 | Speech-to-text     | Whisper (faster-whisper, local) |
-| Text-to-speech     | macOS `say` command (built-in, local) |
+| Text-to-speech     | macOS `say` (default, free, local) or ElevenLabs (optional, higher quality) |
 | Wake-word detection | openWakeWord (local, pretrained "Hey Jarvis" model) |
 | Logging / memory   | PostgreSQL                     |
 | Dashboard backend  | FastAPI + WebSocket            |
@@ -95,6 +95,12 @@ in Docker.
 3. Get a free Tavily API key: go to [tavily.com](https://tavily.com), sign up,
    copy your API key from the dashboard, and paste it into `.env` as
    `TAVILY_API_KEY`.
+3b. (Optional, for a more natural voice) Sign up free at
+   [elevenlabs.io](https://elevenlabs.io), copy your API key into `.env` as
+   `ELEVENLABS_API_KEY`, pick a voice from their Voice Library and paste its
+   Voice ID into `ELEVENLABS_VOICE_ID`, then set `TTS_PROVIDER=elevenlabs`.
+   Free tier is limited (~10,000 characters/month); Jarvis automatically
+   falls back to the free `say` voice if this ever fails.
 4. Start just the database:
    ```
    docker compose up -d db
@@ -156,6 +162,7 @@ Docker-based text mode via `docker compose up app`, also set
 | v3      | Voice output via macOS `say`; Jarvis speaks his responses back to you |
 | v4      | Live web dashboard (React + FastAPI + WebSocket) showing agent activity in real time |
 | v5      | Wake-word activation via openWakeWord's pretrained "Hey Jarvis" model — say it instead of pressing Enter |
+| v6      | Optional ElevenLabs voice upgrade, with automatic fallback to the free `say` voice |
 
 ## Project structure
 
