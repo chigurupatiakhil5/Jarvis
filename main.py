@@ -11,6 +11,17 @@ OUTPUT_MODE = os.environ.get("OUTPUT_MODE", "voice")
 
 
 def get_command() -> str:
+    if INPUT_MODE == "wake":
+        from voice.wake_word import wait_for_wake_word
+        from voice.speech_to_text import listen_after_wake_word
+        wait_for_wake_word()
+        print("Yes?")
+        if OUTPUT_MODE == "voice":
+            from voice.text_to_speech import speak
+            speak("Yes?")
+        text = listen_after_wake_word()
+        print(f"you (heard)> {text}")
+        return text.strip()
     if INPUT_MODE == "voice":
         from voice.speech_to_text import listen
         text = listen()
@@ -20,7 +31,7 @@ def get_command() -> str:
 
 
 def respond(text: str) -> None:
-    print(f"\nmay> {text}\n")
+    print(f"\njarvis> {text}\n")
     if OUTPUT_MODE == "voice":
         from voice.text_to_speech import speak
         speak(text)
@@ -28,8 +39,9 @@ def respond(text: str) -> None:
 
 def main():
     init_db()
-    mode_label = "Speak a command" if INPUT_MODE == "voice" else "Type a command"
-    print(f"May is ready. {mode_label}, or say/type 'exit' to quit.\n")
+    mode_labels = {"wake": "Say 'Hey Jarvis' to activate", "voice": "Speak a command"}
+    mode_label = mode_labels.get(INPUT_MODE, "Type a command")
+    print(f"Jarvis is ready. {mode_label}, or say/type 'exit' to quit.\n")
 
     while True:
         command = get_command()

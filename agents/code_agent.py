@@ -12,7 +12,7 @@ _client = Groq(api_key=os.environ["GROQ_API_KEY"])
 _EXECUTION_TIMEOUT_SECONDS = 10
 
 _SYSTEM_PROMPT = (
-    "You are the Code Agent inside May, a multi-agent assistant. "
+    "You are the Code Agent inside Jarvis, a multi-agent assistant. "
     "You are given an instruction describing a small Python program to write. "
     "Write ONLY the Python code that fulfills it — no markdown code fences, no explanation. "
     "The code should print its result so the output is visible when run."

@@ -1,24 +1,31 @@
-# May
+# Jarvis
 
-May is a multi-agent AI assistant. You give it a command — an **Orchestrator**
-agent figures out what kind of task it is and hands it off to a specialized
-**worker agent**, which does the work and reports back. Every decision and
-tool call is logged to a database, so nothing May does is a black box.
+Jarvis is a multi-agent AI assistant. You give it a command — an
+**Orchestrator** agent figures out what kind of task it is and hands it off
+to a specialized **worker agent**, which does the work and reports back.
+Every decision and tool call is logged to a database, so nothing Jarvis does
+is a black box.
 
-May now has five worker agents — Research, Writer, Email, Code, and Monitor —
+Jarvis has five worker agents — Research, Writer, Email, Code, and Monitor —
 and the Orchestrator routes your command to whichever one fits, based on what
 you're asking for. You can speak your commands instead of typing them
-(local, free Whisper transcription), and May speaks her answers back to you
-too (local, free text-to-speech). As of v4, a live web dashboard shows every
-agent decision as it happens. Wake-word activation is coming in v5 — see
-[Version History](#version-history).
+(local, free Whisper transcription), and Jarvis speaks his answers back to
+you too (local, free text-to-speech). A live web dashboard shows every agent
+decision as it happens. Jarvis can also listen continuously in the
+background and activate when you say "Hey Jarvis" — no button, no keyboard.
 
 ## Architecture
 
 ```
+                    ┌──────────────────┐
+ "Hey Jarvis"   ──► │ openWakeWord      │ always listening in the background
+                     │ (local, pretrained)│
+                     └─────────┬─────────┘
+                               │ wake word detected
+                               ▼
                     ┌────────────────┐
-  you speak (or  ──►│  Whisper (local)│──► transcribed text
-  type) a command    └────────┬────────┘
+  you speak      ──►│  Whisper (local)│──► transcribed text
+  your command       └────────┬────────┘
                              ▼
                     ┌────────────────┐
                     │  Orchestrator   │
@@ -64,6 +71,7 @@ agent decision as it happens. Wake-word activation is coming in v5 — see
 | Web search tool    | Tavily                         |
 | Speech-to-text     | Whisper (faster-whisper, local) |
 | Text-to-speech     | macOS `say` command (built-in, local) |
+| Wake-word detection | openWakeWord (local, pretrained "Hey Jarvis" model) |
 | Logging / memory   | PostgreSQL                     |
 | Dashboard backend  | FastAPI + WebSocket            |
 | Dashboard frontend | React + TypeScript (Vite)      |
@@ -72,10 +80,10 @@ agent decision as it happens. Wake-word activation is coming in v5 — see
 
 ## Setup
 
-**Note on running mode:** as of v2, May runs **natively** on your Mac (not
-fully inside Docker) so she can access your microphone — Docker Desktop on
-macOS can't reliably forward audio devices into a container. PostgreSQL still
-runs in Docker.
+**Note on running mode:** Jarvis runs **natively** on your Mac (not fully
+inside Docker) so he can access your microphone — Docker Desktop on macOS
+can't reliably forward audio devices into a container. PostgreSQL still runs
+in Docker.
 
 1. Copy the environment template and fill in your keys:
    ```
@@ -98,7 +106,7 @@ runs in Docker.
    pip install -r requirements.txt
    ```
 6. (Optional, for the live dashboard) In a separate terminal, start the API server.
-   Port 8000 is a common default other projects also use, so May's dashboard
+   Port 8000 is a common default other projects also use, so Jarvis's dashboard
    backend runs on 8001 instead:
    ```
    source .venv/bin/activate
@@ -111,15 +119,18 @@ runs in Docker.
    npm run dev
    ```
    Open the URL it prints (usually `http://localhost:5173`) in your browser.
-8. Run May:
+8. Run Jarvis:
    ```
    python main.py
    ```
-   The first run downloads the Whisper "tiny" model (~75MB) once — it's
-   cached after that.
-9. Press Enter, speak a command, press Enter again when done — May will
-   print AND speak her answer back to you, and (if the dashboard is running)
-   it'll appear there live too. Try any of these:
+   The first run downloads the Whisper "tiny" model (~75MB) and the
+   pretrained "Hey Jarvis" wake-word model once — both are cached after that.
+9. By default (`INPUT_MODE=voice`), press Enter, speak a command, press Enter
+   again when done. If you set `INPUT_MODE=wake` in `.env`, just say "Hey
+   Jarvis" instead — he'll listen for ~6 seconds after that automatically, no
+   keyboard needed. Either way, Jarvis prints AND speaks his answer back to
+   you, and (if the dashboard is running) it'll appear there live too. Try
+   any of these:
    - `what are the latest developments in AI agents` → Research
    - `write me a short report on the benefits of Docker` → Writer
    - `draft an email asking my manager for a day off next Friday` → Email
@@ -130,7 +141,7 @@ runs in Docker.
 
 **Prefer typing/reading only, or running fully in Docker without a mic?** Set
 `INPUT_MODE=text` and/or `OUTPUT_MODE=text` in `.env` independently — e.g.
-type your commands but still hear May's replies, or vice versa. For fully
+type your commands but still hear Jarvis's replies, or vice versa. For fully
 Docker-based text mode via `docker compose up app`, also set
 `POSTGRES_HOST=db` and `POSTGRES_PORT=5432` first (see the comments in
 `.env.example`).
@@ -142,17 +153,18 @@ Docker-based text mode via `docker compose up app`, also set
 | v0      | Text-only orchestrator + Research Agent, PostgreSQL logging, Docker Compose |
 | v1      | Writer, Email, Code, and Monitor agents; Orchestrator routes across all 5; `tools/file_manager.py` |
 | v2      | Voice input via local Whisper; runs natively for mic access, Postgres stays in Docker |
-| v3      | Voice output via macOS `say`; May speaks her responses back to you |
+| v3      | Voice output via macOS `say`; Jarvis speaks his responses back to you |
 | v4      | Live web dashboard (React + FastAPI + WebSocket) showing agent activity in real time |
+| v5      | Wake-word activation via openWakeWord's pretrained "Hey Jarvis" model — say it instead of pressing Enter |
 
 ## Project structure
 
 ```
-may/
+jarvis/
 ├── agents/          # orchestrator + worker agent logic
 ├── tools/           # functions agents use to act (web search, ...)
 ├── memory/          # PostgreSQL logging
-├── voice/           # speech-to-text (v2) / text-to-speech (v3)
+├── voice/           # speech-to-text (v2) / text-to-speech (v3) / wake word (v5)
 ├── frontend/        # React dashboard (v4)
 ├── main.py          # entry point (voice/text loop)
 ├── api.py           # FastAPI dashboard backend (v4)

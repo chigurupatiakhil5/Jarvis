@@ -17,7 +17,7 @@ _AVAILABLE_AGENTS = {
 }
 
 _SYSTEM_PROMPT = (
-    "You are the Orchestrator inside May, a multi-agent assistant. "
+    "You are the Orchestrator inside Jarvis, a multi-agent assistant. "
     f"The user gives you a command. Available agents:\n{json.dumps(_AVAILABLE_AGENTS, indent=2)}\n"
     "Decide which agent should handle the command, and rewrite the command as a clear, "
     "specific instruction for that agent. "

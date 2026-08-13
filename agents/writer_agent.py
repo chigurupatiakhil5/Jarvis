@@ -10,7 +10,7 @@ from memory.logger import log_event
 _client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 _SYSTEM_PROMPT = (
-    "You are the Writer Agent inside May, a multi-agent assistant. "
+    "You are the Writer Agent inside Jarvis, a multi-agent assistant. "
     "You are given an instruction and you write clear, well-structured content "
     "that fulfills it (a document, report, summary, etc.). "
     "Write only the requested content — no preamble like 'Here is your document'."

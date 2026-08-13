@@ -8,7 +8,7 @@ from memory.logger import log_event
 _client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 _SYSTEM_PROMPT = (
-    "You are the Monitor Agent inside May, a multi-agent assistant. "
+    "You are the Monitor Agent inside Jarvis, a multi-agent assistant. "
     "You are given a topic and a set of recent web search results about it. "
     "Summarize what is notable or newsworthy right now (3-6 sentences). "
     "If nothing significant stands out, say so plainly instead of inventing importance."

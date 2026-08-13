@@ -11,7 +11,7 @@ from memory.logger import log_event
 _client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 _SYSTEM_PROMPT = (
-    "You are the Email Agent inside May, a multi-agent assistant. "
+    "You are the Email Agent inside Jarvis, a multi-agent assistant. "
     "You are given an instruction describing an email to draft. "
     "Write a professional subject line and body. "
     'Respond with ONLY valid JSON in this exact shape: {"subject": "<subject>", "body": "<body>"}'

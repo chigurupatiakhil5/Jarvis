@@ -8,7 +8,7 @@ from memory.logger import log_event
 _client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 _SYSTEM_PROMPT = (
-    "You are the Research Agent inside May, a multi-agent assistant. "
+    "You are the Research Agent inside Jarvis, a multi-agent assistant. "
     "You are given a user's question and a set of raw web search results. "
     "Write a clear, concise summary (3-6 sentences) that directly answers the question, "
     "based only on the search results provided. Do not make up information."

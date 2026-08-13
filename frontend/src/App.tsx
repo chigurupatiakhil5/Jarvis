@@ -38,7 +38,7 @@ function App() {
   return (
     <div className="dashboard">
       <header>
-        <h1>May — Live Agent Activity</h1>
+        <h1>Jarvis — Live Agent Activity</h1>
         <span className={`status ${connected ? 'connected' : 'disconnected'}`}>
           {connected ? 'Connected' : 'Disconnected'}
         </span>
@@ -46,7 +46,7 @@ function App() {
 
       <div className="events">
         {events.length === 0 && (
-          <p className="empty">No activity yet. Give May a command.</p>
+          <p className="empty">No activity yet. Give Jarvis a command.</p>
         )}
         {events
           .slice()

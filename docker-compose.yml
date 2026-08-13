@@ -9,7 +9,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - may_pgdata:/var/lib/postgresql/data
+      - jarvis_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
@@ -29,4 +29,4 @@ services:
       - .:/app
 
 volumes:
-  may_pgdata:
+  jarvis_pgdata:
