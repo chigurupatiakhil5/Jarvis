@@ -3,18 +3,19 @@ import json
 from groq import Groq
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from agents import research_agent, writer_agent, email_agent, code_agent, monitor_agent, preferences_agent
+from agents import research_agent, writer_agent, email_agent, code_agent, monitor_agent, preferences_agent, general_agent
 from memory.logger import log_event, get_preferences
 
 _client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 _AVAILABLE_AGENTS = {
-    "research": "Searches the web and summarizes findings to answer a question.",
+    "research": "Searches the web for CURRENT or real-time information (news, recent events, things that change over time) and summarizes findings.",
     "writer": "Writes documents, reports, or summaries and saves them to disk.",
     "email": "Drafts an email (subject + body) and saves it for review. Does not send or read real email.",
     "code": "Writes a Python script and runs it, returning the output.",
     "monitor": "Checks for recent news or developments on a topic, right now.",
     "preferences": "Remembers something the user says they like, want, or care about, for future reference.",
+    "general": "Answers general knowledge questions, casual conversation, or anything answerable from the model's own knowledge WITHOUT needing current/real-time web data.",
 }
 
 
@@ -63,6 +64,7 @@ def handle_command(command: str) -> str:
         "code": code_agent,
         "monitor": monitor_agent,
         "preferences": preferences_agent,
+        "general": general_agent,
     }
 
     agent_module = agent_modules.get(agent_name)

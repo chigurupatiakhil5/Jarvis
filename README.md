@@ -6,9 +6,12 @@ to a specialized **worker agent**, which does the work and reports back.
 Every decision and tool call is logged to a database, so nothing Jarvis does
 is a black box.
 
-Jarvis has six worker agents — Research, Writer, Email, Code, Monitor, and
-Preferences — and the Orchestrator routes your command to whichever one
-fits, based on what you're asking for. It also reads your saved preferences
+Jarvis has seven worker agents — Research, Writer, Email, Code, Monitor,
+Preferences, and General — and the Orchestrator routes your command to
+whichever one fits, based on what you're asking for. General questions
+("what's the capital of France") get answered directly without an
+unnecessary web search; anything needing current information ("what's the
+latest AI news") still goes to Research. It also reads your saved preferences
 before deciding, so it can personalize how it delegates — e.g. "I'm
 traveling to Chicago" naturally becomes "find good Indian restaurants in
 Chicago" if you've told it you like Indian food. You can speak your commands
@@ -39,16 +42,16 @@ conditions against your preferences and speak up on his own.
                     └────────┬────────┘
                              │ picks one agent + logs the decision
                              ▼
-    ┌───────────┬────────────┬───────────┬────────────┬────────────┬────────────┐
-    │ Research  │  Writer    │  Email    │   Code      │  Monitor    │ Preferences │
-    │  Agent    │  Agent     │  Agent    │   Agent     │  Agent      │  Agent      │
-    └─────┬─────┴─────┬──────┴─────┬─────┴──────┬──────┴─────┬──────┴─────┬──────┘
-          │           │            │            │            │            │
-    web_search    file_manager file_manager  file_manager +  web_search   saves to
-     (Tavily)      (saves doc)  (saves draft)  subprocess     (Tavily,   preferences
-                                                (runs code)   news-biased)  table
-          │           │            │            │            │            │
-          ▼           ▼            ▼            ▼            ▼            ▼
+┌───────────┬────────────┬───────────┬────────────┬────────────┬────────────┬───────────┐
+│ Research  │  Writer    │  Email    │   Code      │  Monitor    │ Preferences │  General   │
+│  Agent    │  Agent     │  Agent    │   Agent     │  Agent      │  Agent      │  Agent     │
+└─────┬─────┴─────┬──────┴─────┬─────┴──────┬──────┴─────┬──────┴─────┬──────┴─────┬─────┘
+      │           │            │            │            │            │            │
+web_search    file_manager file_manager  file_manager +  web_search   saves to    (no tool —
+ (Tavily)      (saves doc)  (saves draft)  subprocess     (Tavily,   preferences   answers
+                                            (runs code)   news-biased)  table      directly)
+      │           │            │            │            │            │            │
+      ▼           ▼            ▼            ▼            ▼            ▼            ▼
                 result printed AND spoken back to you
                    (macOS `say` or optional ElevenLabs)
 
@@ -74,6 +77,7 @@ conditions against your preferences and speak up on his own.
 - **Code** — writes Python, runs it in a subprocess with a 10s timeout, returns output
 - **Monitor** — checks for recent news/developments on a topic, on demand
 - **Preferences** — remembers things you tell it you like/care about, for the Orchestrator and `scheduler.py` to use later
+- **General** — answers general knowledge/casual questions directly, no web search needed
 
 ## Tech stack
 
@@ -157,6 +161,7 @@ in Docker.
    - `write and run a script that prints the first 10 fibonacci numbers` → Code
    - `check for recent news on OpenAI` → Monitor
    - `remember that I like rainy, windy weather with no sun` → Preferences
+   - `what's the capital of France` → General (answers directly, no web search)
 
    Say (or type, if `INPUT_MODE=text`) `exit` to quit.
 10. (Optional, for proactive notifications) In another terminal, start the
@@ -168,6 +173,41 @@ in Docker.
     ```
     Save at least one preference first (step 9) — with none saved, the
     scheduler has nothing to check against and skips every cycle.
+
+## Running scheduler.py without a terminal (background service)
+
+`scheduler.py` can run as a macOS background service via `launchd`, starting
+automatically at login and restarting itself if it ever crashes — no
+terminal window needed once set up.
+
+**`main.py` can't run this way** — real macOS limitation, not a bug we can
+fix here: background `launchd` processes have no GUI security session for
+macOS to attach a microphone permission prompt to, so wake-word listening
+silently fails headless (confirmed: no permission prompt ever appears, even
+with the modern `launchctl bootstrap` loading method). `main.py` still needs
+to be run from Terminal (which already has real microphone permission) when
+you want to talk to Jarvis. A true fix would mean packaging this as a signed
+macOS app — a much bigger undertaking than a launchd plist.
+
+1. Make sure Docker Desktop is set to start at login (Docker Desktop → its
+   own Settings → General), and that `docker compose up -d db` has been run
+   at least once — its `restart: unless-stopped` policy then keeps Postgres
+   running across Docker/Mac restarts automatically.
+2. Install the service:
+   ```
+   cp launchd/com.jarvis.scheduler.plist ~/Library/LaunchAgents/
+   launchctl load ~/Library/LaunchAgents/com.jarvis.scheduler.plist
+   ```
+3. Since there's no terminal to watch, check status and logs instead:
+   ```
+   launchctl list | grep jarvis
+   tail -f logs/scheduler.log logs/scheduler.error.log
+   ```
+4. To stop or restart it:
+   ```
+   launchctl unload ~/Library/LaunchAgents/com.jarvis.scheduler.plist
+   launchctl load ~/Library/LaunchAgents/com.jarvis.scheduler.plist
+   ```
 
 **Prefer typing/reading only, or running fully in Docker without a mic?** Set
 `INPUT_MODE=text` and/or `OUTPUT_MODE=text` in `.env` independently — e.g.
