@@ -77,3 +77,18 @@ def speak_process(text: str) -> subprocess.Popen:
 def speak(text: str) -> None:
     """Speaks text and blocks until it finishes. For callers that don't need interruption."""
     speak_process(text).wait()
+
+
+def synthesize_bytes(text: str):
+    """
+    Returns ElevenLabs audio bytes for `text`, or None if ElevenLabs isn't
+    configured or the call fails. Doesn't play anything — for callers (like
+    the cloud API) that need to send audio elsewhere rather than play it
+    locally with `say`/`afplay`, neither of which exist on a server.
+    """
+    if _TTS_PROVIDER != "elevenlabs":
+        return None
+    try:
+        return _call_elevenlabs(_normalize_for_speech(text))
+    except Exception:
+        return None
