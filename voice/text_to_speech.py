@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import tempfile
+import threading
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
 
@@ -24,10 +25,6 @@ def _normalize_for_speech(text: str) -> str:
     return text
 
 
-def _speak_with_say(text: str) -> None:
-    subprocess.run(["say", "-v", _SAY_VOICE, text])
-
-
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=5))
 def _call_elevenlabs(text: str) -> bytes:
     response = httpx.post(
@@ -41,28 +38,42 @@ def _call_elevenlabs(text: str) -> bytes:
     return response.content
 
 
-def _speak_with_elevenlabs(text: str) -> None:
-    audio_bytes = _call_elevenlabs(text)
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-        f.write(audio_bytes)
-        temp_path = f.name
-    try:
-        subprocess.run(["afplay", temp_path])
-    finally:
-        os.remove(temp_path)
+def _cleanup_when_done(process: subprocess.Popen, path: str) -> None:
+    def _wait_and_remove():
+        process.wait()
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+    threading.Thread(target=_wait_and_remove, daemon=True).start()
 
 
-def speak(text: str) -> None:
+def speak_process(text: str) -> subprocess.Popen:
+    """
+    Starts speaking `text` without blocking, returning the playback process
+    so the caller can poll it or call .terminate() to stop mid-sentence.
+    """
     text = _normalize_for_speech(text)
 
     if _TTS_PROVIDER == "elevenlabs":
         try:
-            _speak_with_elevenlabs(text)
-            return
+            audio_bytes = _call_elevenlabs(text)
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                f.write(audio_bytes)
+                temp_path = f.name
+            process = subprocess.Popen(["afplay", temp_path])
+            _cleanup_when_done(process, temp_path)
+            return process
         except RetryError as e:
             underlying = e.last_attempt.exception()
             print(f"[ElevenLabs unavailable, falling back to local voice: {underlying}]")
         except Exception as e:
             print(f"[ElevenLabs unavailable, falling back to local voice: {e}]")
 
-    _speak_with_say(text)
+    return subprocess.Popen(["say", "-v", _SAY_VOICE, text])
+
+
+def speak(text: str) -> None:
+    """Speaks text and blocks until it finishes. For callers that don't need interruption."""
+    speak_process(text).wait()

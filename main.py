@@ -1,4 +1,6 @@
 import os
+import threading
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,18 +12,22 @@ INPUT_MODE = os.environ.get("INPUT_MODE", "voice")
 OUTPUT_MODE = os.environ.get("OUTPUT_MODE", "voice")
 
 
+def _acknowledge_and_listen() -> str:
+    from voice.speech_to_text import listen_after_wake_word
+    print("Yes, boss?")
+    if OUTPUT_MODE == "voice":
+        from voice.text_to_speech import speak
+        speak("Yes, boss?")
+    text = listen_after_wake_word()
+    print(f"you (heard)> {text}")
+    return text.strip()
+
+
 def get_command() -> str:
     if INPUT_MODE == "wake":
         from voice.wake_word import wait_for_wake_word
-        from voice.speech_to_text import listen_after_wake_word
         wait_for_wake_word()
-        print("Yes, boss?")
-        if OUTPUT_MODE == "voice":
-            from voice.text_to_speech import speak
-            speak("Yes, boss?")
-        text = listen_after_wake_word()
-        print(f"you (heard)> {text}")
-        return text.strip()
+        return _acknowledge_and_listen()
     if INPUT_MODE == "voice":
         from voice.speech_to_text import listen
         text = listen()
@@ -30,11 +36,48 @@ def get_command() -> str:
     return input("you> ").strip()
 
 
-def respond(text: str) -> None:
+def respond(text: str):
+    """
+    Prints and speaks `text`. In wake mode with voice output, listens for an
+    interrupting "Hey Jarvis" while speaking — if heard, stops speaking early
+    and returns the next command directly. Otherwise returns None.
+    """
     print(f"\njarvis> {text}\n")
-    if OUTPUT_MODE == "voice":
+
+    if OUTPUT_MODE != "voice":
+        return None
+
+    if INPUT_MODE != "wake":
         from voice.text_to_speech import speak
         speak(text)
+        return None
+
+    from voice.wake_word import wait_for_wake_word
+    from voice.text_to_speech import speak_process
+
+    stop_listening = threading.Event()
+    wake_detected = threading.Event()
+
+    def _listen_in_background():
+        if wait_for_wake_word(stop_event=stop_listening, announce=False):
+            wake_detected.set()
+
+    listener_thread = threading.Thread(target=_listen_in_background, daemon=True)
+    listener_thread.start()
+
+    process = speak_process(text)
+    while process.poll() is None:
+        if wake_detected.is_set():
+            process.terminate()
+            break
+        time.sleep(0.05)
+
+    stop_listening.set()
+    listener_thread.join(timeout=2)
+
+    if wake_detected.is_set():
+        return _acknowledge_and_listen()
+    return None
 
 
 def main():
@@ -43,8 +86,12 @@ def main():
     mode_label = mode_labels.get(INPUT_MODE, "Type a command")
     print(f"Jarvis is ready. {mode_label}, or say/type 'exit' to quit.\n")
 
+    pending_command = None
+
     while True:
-        command = get_command()
+        command = pending_command or get_command()
+        pending_command = None
+
         if not command:
             continue
         if command.lower() in ("exit", "quit"):
@@ -53,9 +100,9 @@ def main():
 
         try:
             result = handle_command(command)
-            respond(result)
+            pending_command = respond(result)
         except Exception as e:
-            respond(f"Something went wrong: {e}")
+            pending_command = respond(f"Something went wrong: {e}")
 
 
 if __name__ == "__main__":
