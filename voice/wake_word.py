@@ -4,15 +4,20 @@ from openwakeword.model import Model
 
 _SAMPLE_RATE = 16000
 _CHUNK_SIZE = 1280
-_THRESHOLD = 0.5
+_THRESHOLD = 0.3
 _MODEL_NAME = os.environ.get("WAKE_WORD_MODEL", "hey_jarvis")
 
 _model = Model(wakeword_models=[_MODEL_NAME], inference_framework="onnx")
+_WARMUP_CHUNKS = 16
 
 
 def wait_for_wake_word() -> None:
-    print("Listening for 'Hey Jarvis'...")
     with sd.InputStream(samplerate=_SAMPLE_RATE, channels=1, dtype="int16", blocksize=_CHUNK_SIZE) as stream:
+        for _ in range(_WARMUP_CHUNKS):
+            frame, _ = stream.read(_CHUNK_SIZE)
+            _model.predict(frame.flatten())
+
+        print("Listening for 'Hey Jarvis'...")
         while True:
             frame, _ = stream.read(_CHUNK_SIZE)
             predictions = _model.predict(frame.flatten())

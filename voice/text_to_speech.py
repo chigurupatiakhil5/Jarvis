@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import tempfile
 import httpx
@@ -7,6 +8,20 @@ from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
 _SAY_VOICE = "Samantha"
 _TTS_PROVIDER = os.environ.get("TTS_PROVIDER", "say")
 _ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "")
+
+_SPEECH_REPLACEMENTS = [
+    (re.compile(r"°F", re.IGNORECASE), " degrees Fahrenheit"),
+    (re.compile(r"°C", re.IGNORECASE), " degrees Celsius"),
+    (re.compile(r"°"), " degrees"),
+    (re.compile(r"\bmph\b", re.IGNORECASE), "miles per hour"),
+    (re.compile(r"\bkm/h\b", re.IGNORECASE), "kilometers per hour"),
+]
+
+
+def _normalize_for_speech(text: str) -> str:
+    for pattern, replacement in _SPEECH_REPLACEMENTS:
+        text = pattern.sub(replacement, text)
+    return text
 
 
 def _speak_with_say(text: str) -> None:
@@ -38,6 +53,8 @@ def _speak_with_elevenlabs(text: str) -> None:
 
 
 def speak(text: str) -> None:
+    text = _normalize_for_speech(text)
+
     if _TTS_PROVIDER == "elevenlabs":
         try:
             _speak_with_elevenlabs(text)
