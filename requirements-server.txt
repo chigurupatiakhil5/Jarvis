@@ -8,5 +8,4 @@ faster-whisper==1.2.1
 fastapi==0.128.8
 uvicorn[standard]==0.39.0
 python-multipart==0.0.20
-piper-tts[http]==1.6.1
 pyjwt[crypto]==2.10.1
