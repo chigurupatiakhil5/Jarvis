@@ -33,34 +33,49 @@
     color: #6b7280;
     margin: 0 0 40px;
   }
+  #app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
   #orb-wrap {
     position: relative;
-    width: 260px;
-    height: 260px;
+    width: 340px;
+    height: 340px;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  #orb-ground {
+    position: absolute;
+    bottom: 18px;
+    width: 150px;
+    height: 28px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(59,130,246,0.35), transparent 70%);
+    filter: blur(4px);
+    transition: background 0.4s;
   }
   canvas#viz {
     position: absolute;
     top: 0;
     left: 0;
-    width: 260px;
-    height: 260px;
+    width: 340px;
+    height: 340px;
   }
   #orb {
-    width: 120px;
-    height: 120px;
+    width: 170px;
+    height: 170px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), var(--idle) 70%);
-    box-shadow: 0 0 40px 6px var(--idle);
+    box-shadow: 0 0 55px 10px var(--idle);
     transition: background 0.4s, box-shadow 0.4s;
     animation: breathe 3.2s ease-in-out infinite;
     cursor: pointer;
   }
-  #orb.listening { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), var(--listening) 70%); box-shadow: 0 0 50px 10px var(--listening); animation: breathe 1.4s ease-in-out infinite; }
-  #orb.thinking { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), var(--thinking) 70%); box-shadow: 0 0 45px 8px var(--thinking); animation: spin-pulse 1s linear infinite; }
-  #orb.speaking { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), var(--speaking) 70%); box-shadow: 0 0 55px 12px var(--speaking); animation: breathe 1.8s ease-in-out infinite; }
+  #orb.listening { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), var(--listening) 70%); box-shadow: 0 0 65px 14px var(--listening); animation: breathe 1.4s ease-in-out infinite; }
+  #orb.thinking { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), var(--thinking) 70%); box-shadow: 0 0 60px 12px var(--thinking); animation: spin-pulse 1s linear infinite; }
+  #orb.speaking { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), var(--speaking) 70%); box-shadow: 0 0 70px 16px var(--speaking); animation: breathe 1.8s ease-in-out infinite; }
   @keyframes breathe {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
@@ -70,26 +85,13 @@
     50% { transform: scale(1.04) rotate(180deg); }
     100% { transform: scale(1) rotate(360deg); }
   }
-  #status {
+  #app-status, #auth-status {
     margin-top: 28px;
     font-size: 14px;
     color: #9ca3af;
     min-height: 20px;
     letter-spacing: 0.5px;
   }
-  #session-button {
-    margin-top: 24px;
-    padding: 10px 28px;
-    border-radius: 999px;
-    border: 1px solid #374151;
-    background: transparent;
-    color: #d1d5db;
-    font-size: 14px;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-  #session-button:hover { border-color: #6b7280; }
-  #session-button.active { border-color: #ef4444; color: #ef4444; }
   #conversation {
     margin-top: 32px;
     width: 100%;
@@ -111,31 +113,167 @@
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  canvas#starfield {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+  }
+  #auth-screen {
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    justify-content: center;
+    animation: card-in 0.5s ease-out;
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  #auth-card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 36px 30px 30px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(26,32,50,0.7), rgba(15,19,30,0.7));
+    border: 1px solid rgba(96,165,250,0.18);
+    box-shadow: 0 0 60px -10px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  #auth-orb {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), var(--idle) 75%);
+    box-shadow: 0 0 24px 4px rgba(59,130,246,0.5);
+    animation: breathe 3.2s ease-in-out infinite;
+    margin-bottom: 2px;
+  }
+  #auth-title { font-size: 16px; font-weight: 600; color: #e6e6e6; letter-spacing: 0.3px; }
+  #auth-screen input {
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,13,20,0.6);
+    color: #e6e6e6;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #auth-screen input::placeholder { color: #6b7280; }
+  #auth-screen input:focus {
+    outline: none;
+    border-color: var(--idle);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  }
+  #auth-screen .auth-buttons { display: flex; gap: 10px; width: 100%; }
+  #auth-screen button {
+    flex: 1;
+    padding: 12px 0;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s, opacity 0.2s;
+  }
+  #auth-screen button:active { transform: scale(0.97); }
+  #sign-in-button {
+    border: 1px solid rgba(255,255,255,0.14);
+    background: transparent;
+    color: #d1d5db;
+  }
+  #sign-in-button:hover { border-color: #9ca3af; }
+  #sign-up-button {
+    border: none;
+    background: linear-gradient(135deg, #3b82f6, #22d3ee);
+    color: #0a0c12;
+    box-shadow: 0 0 20px -4px rgba(59,130,246,0.6);
+  }
+  #sign-up-button:hover { box-shadow: 0 0 26px -2px rgba(59,130,246,0.8); }
+  #auth-error { color: #f87171; font-size: 13px; min-height: 18px; text-align: center; }
+  #sign-out {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  #sign-out:hover { color: #9ca3af; }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
+  <canvas id="starfield"></canvas>
   <h1>Jarvis</h1>
-  <div id="orb-wrap">
-    <canvas id="viz" width="260" height="260"></canvas>
-    <div id="orb"></div>
-  </div>
-  <div id="status">Tap the orb to start</div>
-  <button id="session-button">Start conversation</button>
-  <div id="conversation"></div>
 
+  <div id="auth-screen">
+    <div id="auth-card">
+      <div id="auth-orb"></div>
+      <div id="auth-title">Welcome to Jarvis</div>
+      <div id="auth-status" style="margin-top: 0;">Sign in to talk to your Jarvis</div>
+      <input id="auth-email" type="email" placeholder="Email" autocomplete="email" />
+      <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <div class="auth-buttons">
+        <button id="sign-in-button">Sign In</button>
+        <button id="sign-up-button">Sign Up</button>
+      </div>
+      <div id="auth-error"></div>
+    </div>
+  </div>
+
+  <button id="sign-out" class="hidden">Sign out</button>
+
+  <div id="app" class="hidden">
+    <div id="orb-wrap">
+      <div id="orb-ground"></div>
+      <canvas id="viz" width="340" height="340"></canvas>
+      <div id="orb"></div>
+    </div>
+    <div id="app-status">Tap the orb to start</div>
+    <div id="conversation"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const API_BASE = "http://localhost:8001";
-    const SILENCE_THRESHOLD = 12;
-    const SILENCE_DURATION_MS = 1200;
+
+    // From your Supabase project's Settings -> API page. The anon key is
+    // meant to be public — it can only call the Auth API on your behalf;
+    // it does NOT grant access to your data (api.py checks that separately).
+    const SUPABASE_URL = "https://jhkwvetmtezkpsxpqexb.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impoa3d2ZXRtdGV6a3BzeHBxZXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NTM3NDksImV4cCI6MjEwMjIyOTc0OX0.Ljff17iQHspPFMEMTb7lVmpK0fCIKYeZEyQCN9MRhrs";
+
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SILENCE_THRESHOLD = 20;
+    const SILENCE_DURATION_MS = 900;
     const MIN_UTTERANCE_MS = 500;
     const MAX_UTTERANCE_MS = 25000;
 
     const orb = document.getElementById("orb");
-    const status = document.getElementById("status");
-    const sessionButton = document.getElementById("session-button");
+    const status = document.getElementById("app-status");
     const conversation = document.getElementById("conversation");
     const canvas = document.getElementById("viz");
     const canvasCtx = canvas.getContext("2d");
+
+    const authScreen = document.getElementById("auth-screen");
+    const authStatus = document.getElementById("auth-status");
+    const authEmail = document.getElementById("auth-email");
+    const authPassword = document.getElementById("auth-password");
+    const authError = document.getElementById("auth-error");
+    const signInButton = document.getElementById("sign-in-button");
+    const signUpButton = document.getElementById("sign-up-button");
+    const signOutButton = document.getElementById("sign-out");
+    const appDiv = document.getElementById("app");
 
     let audioContext = null;
     let sessionActive = false;
@@ -162,7 +300,7 @@
       canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
-      const baseRadius = 70;
+      const baseRadius = 95;
       const bars = 48;
 
       canvasCtx.strokeStyle = color;
@@ -171,7 +309,7 @@
 
       for (let i = 0; i < bars; i++) {
         const value = data[Math.floor((i / bars) * bins)] || 0;
-        const length = 6 + (value / 255) * 40;
+        const length = 8 + (value / 255) * 50;
         const angle = (i / bars) * Math.PI * 2;
         const x1 = cx + Math.cos(angle) * baseRadius;
         const y1 = cy + Math.sin(angle) * baseRadius;
@@ -201,7 +339,9 @@
       setState("listening");
       status.textContent = "Listening...";
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       const source = audioContext.createMediaStreamSource(stream);
       analyser = audioContext.createAnalyser();
       analyser.fftSize = 128;
@@ -260,12 +400,27 @@
       setState("thinking");
       status.textContent = "Thinking...";
 
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        status.textContent = "Signed out — please sign in again.";
+        return false;
+      }
+
       const formData = new FormData();
       formData.append("file", blob, "recording.webm");
 
       let data;
       try {
-        const response = await fetch(`${API_BASE}/chat/audio`, { method: "POST", body: formData });
+        const response = await fetch(`${API_BASE}/chat/audio`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: formData,
+        });
+        if (response.status === 401) {
+          status.textContent = "Session expired — please sign in again.";
+          await sb.auth.signOut();
+          return false;
+        }
         data = await response.json();
       } catch (err) {
         status.textContent = "Something went wrong — tap to try again.";
@@ -317,7 +472,7 @@
       endSession();
     }
 
-    function startSession() {
+    async function startSession() {
       sessionActive = true;
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -327,8 +482,6 @@
       unlockSource.connect(audioContext.destination);
       unlockSource.start(0);
 
-      sessionButton.textContent = "End conversation";
-      sessionButton.classList.add("active");
       conversationLoop();
     }
 
@@ -337,8 +490,6 @@
       stopVisualizer();
       setState("idle");
       status.textContent = "Tap the orb to start";
-      sessionButton.textContent = "Start conversation";
-      sessionButton.classList.remove("active");
       if (audioContext) {
         audioContext.close();
         audioContext = null;
@@ -354,7 +505,101 @@
     }
 
     orb.addEventListener("click", toggleSession);
-    sessionButton.addEventListener("click", toggleSession);
+
+    function showApp() {
+      authScreen.classList.add("hidden");
+      signOutButton.classList.remove("hidden");
+      appDiv.classList.remove("hidden");
+    }
+
+    function showAuth() {
+      appDiv.classList.add("hidden");
+      signOutButton.classList.add("hidden");
+      authScreen.classList.remove("hidden");
+      authError.textContent = "";
+      authPassword.value = "";
+    }
+
+    signInButton.addEventListener("click", async () => {
+      authError.textContent = "";
+      const { error } = await sb.auth.signInWithPassword({
+        email: authEmail.value.trim(),
+        password: authPassword.value,
+      });
+      if (error) authError.textContent = error.message;
+    });
+
+    signUpButton.addEventListener("click", async () => {
+      authError.textContent = "";
+      const { data, error } = await sb.auth.signUp({
+        email: authEmail.value.trim(),
+        password: authPassword.value,
+      });
+      if (error) {
+        authError.textContent = error.message;
+      } else if (!data.session) {
+        authStatus.textContent = "Check your email to confirm your account, then sign in.";
+      }
+    });
+
+    signOutButton.addEventListener("click", async () => {
+      if (sessionActive) endSession();
+      await sb.auth.signOut();
+    });
+
+    sb.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        showApp();
+      } else {
+        if (sessionActive) endSession();
+        showAuth();
+      }
+    });
+
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (session) showApp();
+      else showAuth();
+    });
+
+    (function initStarfield() {
+      const starCanvas = document.getElementById("starfield");
+      const ctx = starCanvas.getContext("2d");
+      let stars = [];
+
+      function resize() {
+        starCanvas.width = window.innerWidth;
+        starCanvas.height = window.innerHeight;
+        const count = Math.floor((window.innerWidth * window.innerHeight) / 9000);
+        stars = Array.from({ length: count }, () => ({
+          x: Math.random() * starCanvas.width,
+          y: Math.random() * starCanvas.height,
+          radius: Math.random() * 1.4 + 0.3,
+          speed: Math.random() * 0.15 + 0.03,
+          opacity: Math.random() * 0.5 + 0.15,
+        }));
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, starCanvas.width, starCanvas.height);
+        for (const star of stars) {
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(96, 165, 250, ${star.opacity})`;
+          ctx.fill();
+
+          star.y += star.speed;
+          if (star.y > starCanvas.height) {
+            star.y = 0;
+            star.x = Math.random() * starCanvas.width;
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+      draw();
+    })();
   </script>
 </body>
 </html>

@@ -31,18 +31,18 @@ def _call_llm(query: str, results: list[dict]) -> str:
     return response.choices[0].message.content
 
 
-def run(query: str) -> str:
+def run(user_id: str, query: str) -> str:
     try:
         results = search_web(query)
-        log_event("research_agent", "tool_call", query, str(results), status="success")
+        log_event(user_id, "research_agent", "tool_call", query, str(results), status="success")
     except Exception as e:
-        log_event("research_agent", "tool_call", query, str(e), status="error")
+        log_event(user_id, "research_agent", "tool_call", query, str(e), status="error")
         raise
 
     try:
         summary = _call_llm(query, results)
-        log_event("research_agent", "summary", query, summary, status="success")
+        log_event(user_id, "research_agent", "summary", query, summary, status="success")
         return summary
     except Exception as e:
-        log_event("research_agent", "summary", query, str(e), status="error")
+        log_event(user_id, "research_agent", "summary", query, str(e), status="error")
         raise

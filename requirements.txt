@@ -13,3 +13,4 @@ python-multipart==0.0.20
 openwakeword==0.6.0
 onnxruntime==1.19.2
 piper-tts[http]==1.6.1
+pyjwt[crypto]==2.10.1

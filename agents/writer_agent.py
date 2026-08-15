@@ -35,12 +35,12 @@ def _call_llm(instruction: str) -> str:
     return response.choices[0].message.content
 
 
-def run(instruction: str) -> str:
+def run(user_id: str, instruction: str) -> str:
     try:
         content = _call_llm(instruction)
-        log_event("writer_agent", "generate", instruction, content, status="success")
+        log_event(user_id, "writer_agent", "generate", instruction, content, status="success")
     except Exception as e:
-        log_event("writer_agent", "generate", instruction, str(e), status="error")
+        log_event(user_id, "writer_agent", "generate", instruction, str(e), status="error")
         raise
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -48,9 +48,9 @@ def run(instruction: str) -> str:
 
     try:
         path = save_document("documents", filename, content)
-        log_event("writer_agent", "save_file", filename, path, status="success")
+        log_event(user_id, "writer_agent", "save_file", filename, path, status="success")
     except Exception as e:
-        log_event("writer_agent", "save_file", filename, str(e), status="error")
+        log_event(user_id, "writer_agent", "save_file", filename, str(e), status="error")
         raise
 
     return f"{content}\n\n[saved to {path}]"

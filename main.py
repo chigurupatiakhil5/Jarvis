@@ -10,6 +10,7 @@ from agents.orchestrator import handle_command
 
 INPUT_MODE = os.environ.get("INPUT_MODE", "voice")
 OUTPUT_MODE = os.environ.get("OUTPUT_MODE", "voice")
+_USER_ID = os.environ["MY_USER_ID"]
 
 
 def _acknowledge_and_listen() -> str:
@@ -100,7 +101,7 @@ def main():
             break
 
         try:
-            result = handle_command(command)
+            result = handle_command(_USER_ID, command)
             pending_command = respond(result)
         except Exception as e:
             pending_command = respond(f"Something went wrong: {e}")

@@ -1,18 +1,21 @@
 import base64
 import os
 import tempfile
+import jwt
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from memory.logger import get_connection
+from memory.logger import get_connection, init_db
 from agents.orchestrator import handle_command
 from voice.speech_to_text import transcribe_audio_file
 from voice.text_to_speech import synthesize_bytes
+
+init_db()
 
 app = FastAPI()
 
@@ -24,6 +27,29 @@ app.add_middleware(
 )
 
 _connections: list[WebSocket] = []
+
+_jwks_client = jwt.PyJWKClient(f"{os.environ['SUPABASE_URL']}/auth/v1/.well-known/jwks.json")
+
+
+def require_user(authorization: str = Header(None)) -> str:
+    """
+    FastAPI dependency: verifies the Supabase-issued access token in the
+    Authorization header and returns the caller's user ID (the token's
+    "sub" claim). Signature is checked against Supabase's public signing
+    key (fetched and cached from their JWKS endpoint) so a request can't
+    fake being a different user.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    token = authorization.removeprefix("Bearer ").strip()
+
+    try:
+        signing_key = _jwks_client.get_signing_key_from_jwt(token)
+        payload = jwt.decode(token, signing_key.key, algorithms=["ES256"], audience="authenticated")
+    except jwt.PyJWTError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+    return payload["sub"]
 
 
 class AgentEvent(BaseModel):
@@ -60,7 +86,7 @@ async def receive_event(event: AgentEvent):
 
 
 @app.post("/chat/audio")
-async def chat_audio(file: UploadFile = File(...)):
+async def chat_audio(file: UploadFile = File(...), user_id: str = Depends(require_user)):
     audio_bytes = await file.read()
     suffix = os.path.splitext(file.filename or "")[1] or ".webm"
 
@@ -77,7 +103,7 @@ async def chat_audio(file: UploadFile = File(...)):
         return {"transcript": "", "response_text": "I didn't catch that — could you try again?", "response_audio_base64": None}
 
     try:
-        response_text = handle_command(transcript)
+        response_text = handle_command(user_id, transcript)
     except Exception as e:
         response_text = f"Something went wrong: {e}"
 

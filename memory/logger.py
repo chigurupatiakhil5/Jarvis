@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS preferences (
     timestamp TIMESTAMPTZ NOT NULL,
     description TEXT NOT NULL
 );
+
+ALTER TABLE agent_logs ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE preferences ADD COLUMN IF NOT EXISTS user_id TEXT;
 """
 
 
@@ -42,17 +45,17 @@ def init_db():
         conn.commit()
 
 
-def log_event(agent_name: str, action_type: str, input_text: str, output_text: str, status: str = "success"):
+def log_event(user_id: str, agent_name: str, action_type: str, input_text: str, output_text: str, status: str = "success"):
     timestamp = datetime.now(timezone.utc)
 
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO agent_logs (timestamp, agent_name, action_type, input, output, status)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO agent_logs (timestamp, agent_name, action_type, input, output, status, user_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
-                (timestamp, agent_name, action_type, input_text, output_text, status),
+                (timestamp, agent_name, action_type, input_text, output_text, status, user_id),
             )
         conn.commit()
 
@@ -73,33 +76,34 @@ def log_event(agent_name: str, action_type: str, input_text: str, output_text: s
         pass
 
 
-def save_preference(description: str) -> None:
+def save_preference(user_id: str, description: str) -> None:
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO preferences (timestamp, description) VALUES (%s, %s)",
-                (datetime.now(timezone.utc), description),
+                "INSERT INTO preferences (timestamp, description, user_id) VALUES (%s, %s, %s)",
+                (datetime.now(timezone.utc), description, user_id),
             )
         conn.commit()
 
 
-def get_preferences() -> list[str]:
+def get_preferences(user_id: str) -> list[str]:
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT description FROM preferences ORDER BY id")
+            cur.execute("SELECT description FROM preferences WHERE user_id = %s ORDER BY id", (user_id,))
             return [row[0] for row in cur.fetchall()]
 
 
-def get_recent_notifications(hours: int = 6) -> list[str]:
+def get_recent_notifications(user_id: str, hours: int = 6) -> list[str]:
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT output FROM agent_logs
                 WHERE agent_name = 'scheduler' AND action_type = 'notify'
+                AND user_id = %s
                 AND timestamp > NOW() - INTERVAL '%s hours'
                 ORDER BY id
                 """,
-                (hours,),
+                (user_id, hours),
             )
             return [row[0] for row in cur.fetchall()]

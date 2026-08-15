@@ -37,12 +37,12 @@ def _call_llm(instruction: str) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
-def run(instruction: str) -> str:
+def run(user_id: str, instruction: str) -> str:
     try:
         draft = _call_llm(instruction)
-        log_event("email_agent", "draft", instruction, json.dumps(draft), status="success")
+        log_event(user_id, "email_agent", "draft", instruction, json.dumps(draft), status="success")
     except Exception as e:
-        log_event("email_agent", "draft", instruction, str(e), status="error")
+        log_event(user_id, "email_agent", "draft", instruction, str(e), status="error")
         raise
 
     subject = draft.get("subject", "(no subject)")
@@ -54,9 +54,9 @@ def run(instruction: str) -> str:
 
     try:
         path = save_document("drafts", filename, formatted)
-        log_event("email_agent", "save_file", filename, path, status="success")
+        log_event(user_id, "email_agent", "save_file", filename, path, status="success")
     except Exception as e:
-        log_event("email_agent", "save_file", filename, str(e), status="error")
+        log_event(user_id, "email_agent", "save_file", filename, str(e), status="error")
         raise
 
     return f"{formatted}\n\n[draft saved to {path} — review before sending]"

@@ -44,18 +44,18 @@ def _call_llm(instruction: str) -> str:
     return _strip_code_fences(response.choices[0].message.content)
 
 
-def run(instruction: str) -> str:
+def run(user_id: str, instruction: str) -> str:
     try:
         code = _call_llm(instruction)
-        log_event("code_agent", "generate", instruction, code, status="success")
+        log_event(user_id, "code_agent", "generate", instruction, code, status="success")
     except Exception as e:
-        log_event("code_agent", "generate", instruction, str(e), status="error")
+        log_event(user_id, "code_agent", "generate", instruction, str(e), status="error")
         raise
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     filename = f"{timestamp}-{_slugify(instruction)}.py"
     path = save_document("code", filename, code)
-    log_event("code_agent", "save_file", filename, path, status="success")
+    log_event(user_id, "code_agent", "save_file", filename, path, status="success")
 
     try:
         result = subprocess.run(
@@ -66,9 +66,9 @@ def run(instruction: str) -> str:
         )
         output = result.stdout if result.returncode == 0 else f"Error:\n{result.stderr}"
         status = "success" if result.returncode == 0 else "error"
-        log_event("code_agent", "execute", path, output, status=status)
+        log_event(user_id, "code_agent", "execute", path, output, status=status)
     except subprocess.TimeoutExpired:
         output = f"Execution timed out after {_EXECUTION_TIMEOUT_SECONDS}s"
-        log_event("code_agent", "execute", path, output, status="error")
+        log_event(user_id, "code_agent", "execute", path, output, status="error")
 
     return f"Code saved to {path}\n\n```python\n{code}\n```\n\nOutput:\n{output}"

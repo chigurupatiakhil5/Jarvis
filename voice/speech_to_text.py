@@ -2,8 +2,12 @@ import numpy as np
 from faster_whisper import WhisperModel
 
 _SAMPLE_RATE = 16000
-_MODEL_SIZE = "tiny"
+_MODEL_SIZE = "base"
 _WAKE_WORD_RECORD_SECONDS = 6
+_INITIAL_PROMPT = (
+    "Jarvis is a voice assistant. The user asks about weather, rain, sunsets, "
+    "Indian food, news, emails, code, reminders, and preferences."
+)
 
 _model = WhisperModel(_MODEL_SIZE, device="cpu", compute_type="int8")
 
@@ -32,7 +36,7 @@ def _record_fixed(seconds: float) -> np.ndarray:
 
 def _transcribe(audio) -> str:
     print("Transcribing... (first run per session can take a bit longer)")
-    segments, _ = _model.transcribe(audio, language="en")
+    segments, _ = _model.transcribe(audio, language="en", initial_prompt=_INITIAL_PROMPT)
     text = " ".join(segment.text.strip() for segment in segments)
     return text.strip()
 

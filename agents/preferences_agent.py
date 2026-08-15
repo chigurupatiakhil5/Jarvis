@@ -30,19 +30,19 @@ def _call_llm(instruction: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def run(instruction: str) -> str:
+def run(user_id: str, instruction: str) -> str:
     try:
         preference = _call_llm(instruction)
-        log_event("preferences_agent", "distill", instruction, preference, status="success")
+        log_event(user_id, "preferences_agent", "distill", instruction, preference, status="success")
     except Exception as e:
-        log_event("preferences_agent", "distill", instruction, str(e), status="error")
+        log_event(user_id, "preferences_agent", "distill", instruction, str(e), status="error")
         raise
 
     try:
-        save_preference(preference)
-        log_event("preferences_agent", "save", preference, "saved", status="success")
+        save_preference(user_id, preference)
+        log_event(user_id, "preferences_agent", "save", preference, "saved", status="success")
     except Exception as e:
-        log_event("preferences_agent", "save", preference, str(e), status="error")
+        log_event(user_id, "preferences_agent", "save", preference, str(e), status="error")
         raise
 
     return f"Got it — I'll remember: {preference}"

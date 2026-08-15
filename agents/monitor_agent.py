@@ -31,18 +31,18 @@ def _call_llm(topic: str, results: list[dict]) -> str:
     return response.choices[0].message.content
 
 
-def run(topic: str) -> str:
+def run(user_id: str, topic: str) -> str:
     try:
         results = search_web(topic, search_type="news", recent_days=7)
-        log_event("monitor_agent", "tool_call", topic, str(results), status="success")
+        log_event(user_id, "monitor_agent", "tool_call", topic, str(results), status="success")
     except Exception as e:
-        log_event("monitor_agent", "tool_call", topic, str(e), status="error")
+        log_event(user_id, "monitor_agent", "tool_call", topic, str(e), status="error")
         raise
 
     try:
         summary = _call_llm(topic, results)
-        log_event("monitor_agent", "summary", topic, summary, status="success")
+        log_event(user_id, "monitor_agent", "summary", topic, summary, status="success")
         return summary
     except Exception as e:
-        log_event("monitor_agent", "summary", topic, str(e), status="error")
+        log_event(user_id, "monitor_agent", "summary", topic, str(e), status="error")
         raise
