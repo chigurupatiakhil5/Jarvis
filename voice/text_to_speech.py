@@ -141,5 +141,6 @@ def synthesize_bytes(text: str):
         audio_bytes, extension = _synthesize(text)
         mime_type = "audio/mpeg" if extension == "mp3" else "audio/wav"
         return audio_bytes, mime_type
-    except Exception:
+    except Exception as e:
+        print(f"[synthesize_bytes: {_TTS_PROVIDER} failed: {e}]")
         return None, None
