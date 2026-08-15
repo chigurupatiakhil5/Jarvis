@@ -16,8 +16,8 @@ def _acknowledge_and_listen() -> str:
     from voice.speech_to_text import listen_after_wake_word
     print("Yes, boss?")
     if OUTPUT_MODE == "voice":
-        from voice.text_to_speech import speak
-        speak("Yes, boss?")
+        from voice.text_to_speech import speak_process_cached
+        speak_process_cached("Yes, boss?", "yes_boss").wait()
     text = listen_after_wake_word()
     print(f"you (heard)> {text}")
     return text.strip()
@@ -59,7 +59,7 @@ def respond(text: str):
     wake_detected = threading.Event()
 
     def _listen_in_background():
-        if wait_for_wake_word(stop_event=stop_listening, announce=False):
+        if wait_for_wake_word(stop_event=stop_listening, announce=False, use_barge_in_model=True):
             wake_detected.set()
 
     listener_thread = threading.Thread(target=_listen_in_background, daemon=True)
@@ -69,11 +69,12 @@ def respond(text: str):
     while process.poll() is None:
         if wake_detected.is_set():
             process.terminate()
+            process.wait(timeout=2)
             break
         time.sleep(0.05)
 
     stop_listening.set()
-    listener_thread.join(timeout=2)
+    listener_thread.join()
 
     if wake_detected.is_set():
         return _acknowledge_and_listen()

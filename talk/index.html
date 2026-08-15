@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Talk to Jarvis</title>
+<style>
+  :root {
+    --idle: #3b82f6;
+    --listening: #22d3ee;
+    --thinking: #f59e0b;
+    --speaking: #a855f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: radial-gradient(ellipse at top, #131826 0%, #0a0c12 60%);
+    color: #e6e6e6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-x: hidden;
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin: 0 0 40px;
+  }
+  #orb-wrap {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas#viz {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 260px;
+  }
+  #orb {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), var(--idle) 70%);
+    box-shadow: 0 0 40px 6px var(--idle);
+    transition: background 0.4s, box-shadow 0.4s;
+    animation: breathe 3.2s ease-in-out infinite;
+    cursor: pointer;
+  }
+  #orb.listening { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), var(--listening) 70%); box-shadow: 0 0 50px 10px var(--listening); animation: breathe 1.4s ease-in-out infinite; }
+  #orb.thinking { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), var(--thinking) 70%); box-shadow: 0 0 45px 8px var(--thinking); animation: spin-pulse 1s linear infinite; }
+  #orb.speaking { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), var(--speaking) 70%); box-shadow: 0 0 55px 12px var(--speaking); animation: breathe 1.8s ease-in-out infinite; }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  @keyframes spin-pulse {
+    0% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.04) rotate(180deg); }
+    100% { transform: scale(1) rotate(360deg); }
+  }
+  #status {
+    margin-top: 28px;
+    font-size: 14px;
+    color: #9ca3af;
+    min-height: 20px;
+    letter-spacing: 0.5px;
+  }
+  #session-button {
+    margin-top: 24px;
+    padding: 10px 28px;
+    border-radius: 999px;
+    border: 1px solid #374151;
+    background: transparent;
+    color: #d1d5db;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  #session-button:hover { border-color: #6b7280; }
+  #session-button.active { border-color: #ef4444; color: #ef4444; }
+  #conversation {
+    margin-top: 32px;
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  .bubble {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    animation: fade-in 0.3s ease-out;
+  }
+  .bubble.you { background: #1a1f2b; color: #cbd5e1; align-self: flex-end; }
+  .bubble.jarvis { background: #1c2440; color: #e6e6e6; align-self: flex-start; }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+  <h1>Jarvis</h1>
+  <div id="orb-wrap">
+    <canvas id="viz" width="260" height="260"></canvas>
+    <div id="orb"></div>
+  </div>
+  <div id="status">Tap the orb to start</div>
+  <button id="session-button">Start conversation</button>
+  <div id="conversation"></div>
+
+  <script>
+    const API_BASE = "http://localhost:8001";
+    const SILENCE_THRESHOLD = 12;
+    const SILENCE_DURATION_MS = 1200;
+    const MIN_UTTERANCE_MS = 500;
+    const MAX_UTTERANCE_MS = 25000;
+
+    const orb = document.getElementById("orb");
+    const status = document.getElementById("status");
+    const sessionButton = document.getElementById("session-button");
+    const conversation = document.getElementById("conversation");
+    const canvas = document.getElementById("viz");
+    const canvasCtx = canvas.getContext("2d");
+
+    let audioContext = null;
+    let sessionActive = false;
+    let analyser = null;
+    let animationFrame = null;
+
+    function setState(state) {
+      orb.className = state;
+    }
+
+    function addBubble(who, text) {
+      const div = document.createElement("div");
+      div.className = `bubble ${who}`;
+      div.textContent = text;
+      conversation.prepend(div);
+    }
+
+    function drawVisualizer(color) {
+      if (!analyser) return;
+      const bins = analyser.frequencyBinCount;
+      const data = new Uint8Array(bins);
+      analyser.getByteFrequencyData(data);
+
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const baseRadius = 70;
+      const bars = 48;
+
+      canvasCtx.strokeStyle = color;
+      canvasCtx.lineWidth = 3;
+      canvasCtx.lineCap = "round";
+
+      for (let i = 0; i < bars; i++) {
+        const value = data[Math.floor((i / bars) * bins)] || 0;
+        const length = 6 + (value / 255) * 40;
+        const angle = (i / bars) * Math.PI * 2;
+        const x1 = cx + Math.cos(angle) * baseRadius;
+        const y1 = cy + Math.sin(angle) * baseRadius;
+        const x2 = cx + Math.cos(angle) * (baseRadius + length);
+        const y2 = cy + Math.sin(angle) * (baseRadius + length);
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(x1, y1);
+        canvasCtx.lineTo(x2, y2);
+        canvasCtx.stroke();
+      }
+
+      animationFrame = requestAnimationFrame(() => drawVisualizer(color));
+    }
+
+    function stopVisualizer() {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function getVolume(freqData) {
+      let sum = 0;
+      for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+      return sum / freqData.length;
+    }
+
+    async function listenForUtterance() {
+      setState("listening");
+      status.textContent = "Listening...";
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 128;
+      source.connect(analyser);
+      drawVisualizer(getComputedStyle(document.documentElement).getPropertyValue("--listening"));
+
+      const chunks = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+
+      const stopped = new Promise((resolve) => {
+        mediaRecorder.onstop = () => resolve();
+      });
+
+      mediaRecorder.start();
+
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
+      const startTime = Date.now();
+      let hasSpoken = false;
+      let silenceStart = null;
+
+      await new Promise((resolve) => {
+        function check() {
+          if (!sessionActive) return resolve();
+
+          analyser.getByteFrequencyData(freqData);
+          const volume = getVolume(freqData);
+          const elapsed = Date.now() - startTime;
+
+          if (volume > SILENCE_THRESHOLD) {
+            hasSpoken = true;
+            silenceStart = null;
+          } else if (hasSpoken) {
+            if (silenceStart === null) silenceStart = Date.now();
+            if (Date.now() - silenceStart > SILENCE_DURATION_MS && elapsed > MIN_UTTERANCE_MS) {
+              return resolve();
+            }
+          }
+
+          if (elapsed > MAX_UTTERANCE_MS) return resolve();
+
+          setTimeout(check, 100);
+        }
+        check();
+      });
+
+      mediaRecorder.stop();
+      await stopped;
+      stream.getTracks().forEach((track) => track.stop());
+      stopVisualizer();
+
+      return new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
+    }
+
+    async function sendAndRespond(blob) {
+      setState("thinking");
+      status.textContent = "Thinking...";
+
+      const formData = new FormData();
+      formData.append("file", blob, "recording.webm");
+
+      let data;
+      try {
+        const response = await fetch(`${API_BASE}/chat/audio`, { method: "POST", body: formData });
+        data = await response.json();
+      } catch (err) {
+        status.textContent = "Something went wrong — tap to try again.";
+        console.error(err);
+        return false;
+      }
+
+      if (data.transcript) addBubble("you", data.transcript);
+      addBubble("jarvis", data.response_text);
+
+      if (data.response_audio_base64) {
+        setState("speaking");
+        status.textContent = "Jarvis is speaking...";
+
+        const mimeType = data.response_audio_mime_type || "audio/mpeg";
+        const audioEl = new Audio(`data:${mimeType};base64,${data.response_audio_base64}`);
+        const speakingSource = audioContext.createMediaElementSource(audioEl);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 128;
+        speakingSource.connect(analyser);
+        analyser.connect(audioContext.destination);
+
+        drawVisualizer(getComputedStyle(document.documentElement).getPropertyValue("--speaking"));
+
+        try {
+          await new Promise((resolve, reject) => {
+            audioEl.onended = resolve;
+            audioEl.onerror = reject;
+            audioEl.play().catch(reject);
+          });
+        } catch (err) {
+          console.error("Playback failed:", err);
+          status.textContent = "Couldn't play audio — check browser permissions.";
+        }
+        stopVisualizer();
+      }
+
+      return true;
+    }
+
+    async function conversationLoop() {
+      while (sessionActive) {
+        const blob = await listenForUtterance();
+        if (!sessionActive) break;
+        if (blob.size < 1000) continue;
+        const ok = await sendAndRespond(blob);
+        if (!ok) break;
+      }
+      endSession();
+    }
+
+    function startSession() {
+      sessionActive = true;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      const silentBuffer = audioContext.createBuffer(1, 1, 22050);
+      const unlockSource = audioContext.createBufferSource();
+      unlockSource.buffer = silentBuffer;
+      unlockSource.connect(audioContext.destination);
+      unlockSource.start(0);
+
+      sessionButton.textContent = "End conversation";
+      sessionButton.classList.add("active");
+      conversationLoop();
+    }
+
+    function endSession() {
+      sessionActive = false;
+      stopVisualizer();
+      setState("idle");
+      status.textContent = "Tap the orb to start";
+      sessionButton.textContent = "Start conversation";
+      sessionButton.classList.remove("active");
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+    }
+
+    function toggleSession() {
+      if (sessionActive) {
+        endSession();
+      } else {
+        startSession();
+      }
+    }
+
+    orb.addEventListener("click", toggleSession);
+    sessionButton.addEventListener("click", toggleSession);
+  </script>
+</body>
+</html>

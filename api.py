@@ -81,13 +81,14 @@ async def chat_audio(file: UploadFile = File(...)):
     except Exception as e:
         response_text = f"Something went wrong: {e}"
 
-    audio_bytes_out = synthesize_bytes(response_text)
+    audio_bytes_out, audio_mime_type = synthesize_bytes(response_text)
     response_audio_base64 = base64.b64encode(audio_bytes_out).decode() if audio_bytes_out else None
 
     return {
         "transcript": transcript,
         "response_text": response_text,
         "response_audio_base64": response_audio_base64,
+        "response_audio_mime_type": audio_mime_type,
     }
 
 
