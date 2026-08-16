@@ -85,7 +85,7 @@
     50% { transform: scale(1.04) rotate(180deg); }
     100% { transform: scale(1) rotate(360deg); }
   }
-  #app-status, #auth-status {
+  #app-status, #auth-status, #reset-status {
     margin-top: 28px;
     font-size: 14px;
     color: #9ca3af;
@@ -132,7 +132,7 @@
     from { opacity: 0; transform: translateY(10px) scale(0.98); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
-  #auth-card {
+  .auth-card {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -146,7 +146,7 @@
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
   }
-  #auth-orb {
+  .auth-orb {
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -155,8 +155,8 @@
     animation: breathe 3.2s ease-in-out infinite;
     margin-bottom: 2px;
   }
-  #auth-title { font-size: 16px; font-weight: 600; color: #e6e6e6; letter-spacing: 0.3px; }
-  #auth-screen input {
+  .auth-title { font-size: 16px; font-weight: 600; color: #e6e6e6; letter-spacing: 0.3px; }
+  #auth-screen input, #reset-screen input {
     width: 100%;
     padding: 13px 16px;
     border-radius: 12px;
@@ -166,14 +166,14 @@
     font-size: 14px;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
-  #auth-screen input::placeholder { color: #6b7280; }
-  #auth-screen input:focus {
+  #auth-screen input::placeholder, #reset-screen input::placeholder { color: #6b7280; }
+  #auth-screen input:focus, #reset-screen input:focus {
     outline: none;
     border-color: var(--idle);
     box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
   }
   #auth-screen .auth-buttons { display: flex; gap: 10px; width: 100%; }
-  #auth-screen button {
+  #auth-screen button, #reset-screen button {
     flex: 1;
     padding: 12px 0;
     border-radius: 999px;
@@ -182,21 +182,31 @@
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s, opacity 0.2s;
   }
-  #auth-screen button:active { transform: scale(0.97); }
+  #auth-screen button:active, #reset-screen button:active { transform: scale(0.97); }
   #sign-in-button {
     border: 1px solid rgba(255,255,255,0.14);
     background: transparent;
     color: #d1d5db;
   }
   #sign-in-button:hover { border-color: #9ca3af; }
-  #sign-up-button {
+  #sign-up-button, #reset-password-button {
     border: none;
     background: linear-gradient(135deg, #3b82f6, #22d3ee);
     color: #0a0c12;
     box-shadow: 0 0 20px -4px rgba(59,130,246,0.6);
   }
-  #sign-up-button:hover { box-shadow: 0 0 26px -2px rgba(59,130,246,0.8); }
-  #auth-error { color: #f87171; font-size: 13px; min-height: 18px; text-align: center; }
+  #sign-up-button:hover, #reset-password-button:hover { box-shadow: 0 0 26px -2px rgba(59,130,246,0.8); }
+  #auth-error, #reset-error { color: #f87171; font-size: 13px; min-height: 18px; text-align: center; }
+  #forgot-password-link {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  #forgot-password-link:hover { color: #9ca3af; }
   #sign-out {
     position: fixed;
     top: 16px;
@@ -217,9 +227,9 @@
   <h1>Jarvis</h1>
 
   <div id="auth-screen">
-    <div id="auth-card">
-      <div id="auth-orb"></div>
-      <div id="auth-title">Welcome to Jarvis</div>
+    <div class="auth-card">
+      <div class="auth-orb"></div>
+      <div class="auth-title">Welcome to Jarvis</div>
       <div id="auth-status" style="margin-top: 0;">Sign in to talk to your Jarvis</div>
       <input id="auth-email" type="email" placeholder="Email" autocomplete="email" />
       <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
@@ -227,7 +237,19 @@
         <button id="sign-in-button">Sign In</button>
         <button id="sign-up-button">Sign Up</button>
       </div>
+      <button id="forgot-password-link" type="button">Forgot password?</button>
       <div id="auth-error"></div>
+    </div>
+  </div>
+
+  <div id="reset-screen" class="hidden">
+    <div class="auth-card">
+      <div class="auth-orb"></div>
+      <div class="auth-title">Set a new password</div>
+      <div id="reset-status" style="margin-top: 0;">Choose a new password for your account</div>
+      <input id="reset-password-input" type="password" placeholder="New password" autocomplete="new-password" />
+      <button id="reset-password-button">Set password</button>
+      <div id="reset-error"></div>
     </div>
   </div>
 
@@ -274,6 +296,11 @@
     const signUpButton = document.getElementById("sign-up-button");
     const signOutButton = document.getElementById("sign-out");
     const appDiv = document.getElementById("app");
+    const forgotPasswordLink = document.getElementById("forgot-password-link");
+    const resetScreen = document.getElementById("reset-screen");
+    const resetPasswordInput = document.getElementById("reset-password-input");
+    const resetPasswordButton = document.getElementById("reset-password-button");
+    const resetError = document.getElementById("reset-error");
 
     let audioContext = null;
     let sessionActive = false;
@@ -508,16 +535,27 @@
 
     function showApp() {
       authScreen.classList.add("hidden");
+      resetScreen.classList.add("hidden");
       signOutButton.classList.remove("hidden");
       appDiv.classList.remove("hidden");
     }
 
     function showAuth() {
       appDiv.classList.add("hidden");
+      resetScreen.classList.add("hidden");
       signOutButton.classList.add("hidden");
       authScreen.classList.remove("hidden");
       authError.textContent = "";
       authPassword.value = "";
+    }
+
+    function showReset() {
+      appDiv.classList.add("hidden");
+      authScreen.classList.add("hidden");
+      signOutButton.classList.add("hidden");
+      resetScreen.classList.remove("hidden");
+      resetError.textContent = "";
+      resetPasswordInput.value = "";
     }
 
     signInButton.addEventListener("click", async () => {
@@ -542,13 +580,42 @@
       }
     });
 
+    forgotPasswordLink.addEventListener("click", async () => {
+      authError.textContent = "";
+      const email = authEmail.value.trim();
+      if (!email) {
+        authError.textContent = "Enter your email above first, then tap this again.";
+        return;
+      }
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href,
+      });
+      authError.textContent = error ? error.message : "Check your email for a reset link.";
+    });
+
+    resetPasswordButton.addEventListener("click", async () => {
+      resetError.textContent = "";
+      if (resetPasswordInput.value.length < 6) {
+        resetError.textContent = "Password must be at least 6 characters.";
+        return;
+      }
+      const { error } = await sb.auth.updateUser({ password: resetPasswordInput.value });
+      if (error) {
+        resetError.textContent = error.message;
+      } else {
+        showApp();
+      }
+    });
+
     signOutButton.addEventListener("click", async () => {
       if (sessionActive) endSession();
       await sb.auth.signOut();
     });
 
-    sb.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        showReset();
+      } else if (session) {
         showApp();
       } else {
         if (sessionActive) endSession();
